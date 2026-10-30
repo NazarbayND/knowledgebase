@@ -22,8 +22,25 @@ assessment evidence rather than advancing with unresolved prerequisites.
 tradeoffs. **P2** means conceptual familiarity for now. Metaclasses and free-threaded
 internals are selected P2 topics; core semantics and asyncio are P0.
 
-The [whole-course plan](course-plan.md) keeps later HTTP, FastAPI, persistence,
-distributed-system and production phases visible without creating those lessons yet.
+## Continue through the complete course
+
+| Weeks | Phase and lessons | Review |
+| --- | --- | --- |
+| 4 | [3 — Networking and HTTP](phase-3/index.md) | [Cumulative HTTP/request review](phase-3/assessment.md) |
+| 5–6 | [4 — FastAPI and application architecture](phase-4/index.md) | [API/transaction boundaries](phase-4/assessment.md) |
+| 7–8 | [5 — PostgreSQL and persistence](phase-5/index.md) | [Cumulative query/concurrency review](phase-5/assessment.md) |
+| 9–10 | [6 — Redis and distributed workflows](phase-6/index.md) | [Cache/message failure review](phase-6/assessment.md) |
+| 11–12 | [7 — Security and reliability](phase-7/index.md) | [Cumulative authorization/incident review](phase-7/assessment.md) |
+| 13–14 | [8 — Cloud and delivery](phase-8/index.md) | [Rollout/recovery review](phase-8/assessment.md) |
+| 15 | [9 — Architecture and system design](phase-9/index.md) | [Three design reviews](phase-9/assessment.md) |
+| 16 | [10 — Senior interview preparation](phase-10/index.md) | [Final cumulative assessment](phase-10/assessment.md) |
+
+Use the [curriculum map](curriculum-map.md) for all twenty module links and the
+[whole-course plan](course-plan.md#4-week-by-week-learning-roadmap) for every week's
+theory/implementation/interview allocation. In the current study-only scope,
+use practical blocks for small written code/SQL answers, failure timelines and
+design review. Phases 3–10 project implementations remain deferred; do not count
+unrun integration, deployment or load-test requirements as demonstrated skills.
 
 ## Study cycle
 
@@ -41,8 +58,9 @@ cumulative assessments. Use the [Phase 1 reference](phase-1/quick-reference.md) 
    copying its wording. Record unanswered questions.
 3. **Practise.** Complete the exercise and compare its result with the expected
    behavior. Try an edge case or a deliberately invalid input.
-4. **Apply.** Use the idea in a practical project. Write down the execution command,
-   expected result, and the design decision the exercise helped you make.
+4. **Apply.** Complete the written exercise or failure/design walkthrough. When
+   practical work resumes, record actual commands, observed results and the design
+   decision the exercise helped you make; keep deferred project evidence pending.
 5. **Review.** Demonstrate the checkpoint and add evidence to your
    [progress log](progress.md). Revisit anything you cannot explain independently.
 

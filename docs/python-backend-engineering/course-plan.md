@@ -10,9 +10,10 @@ architectural decisions, and demonstrate those skills in interviews.
 
 !!! info "Scope and provenance"
     This page preserves the supplied whole-course plan, with formatting cleaned up
-    and interface artifacts removed. Only [Phase 1](phase-1/index.md) and
-    [Phase 2](phase-2/index.md) are implemented as lessons in this library.
-    Later phases below are the roadmap, not delivered course material.
+    and interface artifacts removed. All ten phases and twenty modules now have
+    [lessons and assessments](curriculum-map.md). Existing Phase 1–2 examples are
+    runnable. Practical projects for Phases 3–10 are intentionally deferred
+    placeholders; no new service, deployment or completed capstone is claimed.
 
 ## 1. Learning strategy
 
@@ -49,7 +50,8 @@ reliable background processing, and failure modes before distributed-service des
 Python 3.15 features separately. Dependency compatibility matters more than using
 the newest interpreter. The supplied plan states “Python 3.15.1 was released on
 October 21, 2026”; this historical claim is retained as supplied, not independently
-verified. Examples in the implemented phases are validated on Python 3.14.
+verified. Existing Phase 1–2 runnable examples use Python 3.14. Later-phase excerpts
+are teaching material; their service/project implementations remain deferred.
 
 ## 3. Complete curriculum — 10 phases, 20 modules
 
@@ -113,7 +115,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 3 — Networking, HTTP and backend fundamentals
 
-**Week 4 · P0**
+**Week 4 · P0** · [Lessons and assessment](phase-3/index.md)
 
 **Module 5 — Networking and HTTP**
 
@@ -142,7 +144,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 4 — FastAPI and production API engineering
 
-**Weeks 5–6 · P0**
+**Weeks 5–6 · P0** · [Lessons and assessment](phase-4/index.md)
 
 **Module 7 — FastAPI application development**
 
@@ -173,7 +175,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 5 — PostgreSQL, SQL and data persistence
 
-**Weeks 7–8 · P0**
+**Weeks 7–8 · P0** · [Lessons and assessment](phase-5/index.md)
 
 **Module 9 — Relational modeling and SQL**
 
@@ -206,7 +208,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 6 — Redis, messaging and distributed systems
 
-**Weeks 9–10 · P0/P1**
+**Weeks 9–10 · P0/P1** · [Lessons and assessment](phase-6/index.md)
 
 **Module 11 — Caching and coordination**
 
@@ -237,7 +239,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 7 — Security, observability and reliability
 
-**Weeks 11–12 · P0/P1**
+**Weeks 11–12 · P0/P1** · [Lessons and assessment](phase-7/index.md)
 
 **Module 13 — Backend application security**
 
@@ -268,7 +270,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 8 — Cloud, DevOps and backend infrastructure
 
-**Weeks 13–14 · P0/P1**
+**Weeks 13–14 · P0/P1** · [Lessons and assessment](phase-8/index.md)
 
 **Module 15 — Containers, automation and AWS**
 
@@ -297,7 +299,7 @@ verified. Examples in the implemented phases are validated on Python 3.14.
 
 ### Phase 9 — Advanced architecture and system design
 
-**Week 15 · P1/P2**
+**Week 15 · P1/P2** · [Lessons and assessment](phase-9/index.md)
 
 **Module 17 — Software architecture**
 
@@ -328,7 +330,7 @@ model, architecture, bottlenecks, failure recovery, and tradeoffs.
 
 ### Phase 10 — Senior engineering interviews
 
-**Week 16, with practice throughout · P0**
+**Week 16, with practice throughout · P0** · [Lessons and assessment](phase-10/index.md)
 
 **Module 19 — Coding and technical problem solving**
 

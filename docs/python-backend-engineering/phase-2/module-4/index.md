@@ -277,3 +277,5 @@ tiny benchmark while being more predictable under real resource constraints.
 [Exercises, interview and mastery assessment](practice.md) ·
 [Concurrency project](../project.md) · [Phase overview](../index.md) ·
 [Full course roadmap](../../course-plan.md)
+
+Continue with [Module 5 — Networking and HTTP](../../phase-3/module-5/index.md).

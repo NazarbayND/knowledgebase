@@ -39,4 +39,4 @@ in-flight work, and deliberate event-loop blocking.
 - [ ] Score at least 80/100 and record evidence in [progress](../progress.md).
 
 [Subject overview](../index.md) · [Previous: Phase 1](../phase-1/index.md) ·
-[Full roadmap](../course-plan.md)
+[Full roadmap](../course-plan.md) · [Next: Phase 3](../phase-3/index.md)

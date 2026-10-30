@@ -42,6 +42,7 @@ nav:
   - Python Backend Engineering:
       - python-backend-engineering/index.md
       - Learning path: python-backend-engineering/learning-path.md
+      - Curriculum map: python-backend-engineering/curriculum-map.md
       - Phase 1 — Fundamentals:
           - python-backend-engineering/phase-1/index.md
           - Module 1 — Language semantics:
@@ -68,6 +69,88 @@ nav:
           - Concurrency project: python-backend-engineering/phase-2/project.md
           - Debugging playbook: python-backend-engineering/phase-2/debugging-playbook.md
           - Cumulative assessment: python-backend-engineering/phase-2/assessment.md
+      - "Phase 3 — Networking, HTTP and backend fundamentals":
+          - python-backend-engineering/phase-3/index.md
+          - "Module 5 — Networking and HTTP":
+              - python-backend-engineering/phase-3/module-5/index.md
+              - Practice & assessment: python-backend-engineering/phase-3/module-5/practice.md
+          - "Module 6 — Web-server architecture":
+              - python-backend-engineering/phase-3/module-6/index.md
+              - Practice & assessment: python-backend-engineering/phase-3/module-6/practice.md
+          - Phase assessment: python-backend-engineering/phase-3/assessment.md
+          - Project — deferred: python-backend-engineering/phase-3/project.md
+      - "Phase 4 — FastAPI and production API engineering":
+          - python-backend-engineering/phase-4/index.md
+          - "Module 7 — FastAPI application development":
+              - python-backend-engineering/phase-4/module-7/index.md
+              - Practice & assessment: python-backend-engineering/phase-4/module-7/practice.md
+          - "Module 8 — Application architecture and testing":
+              - python-backend-engineering/phase-4/module-8/index.md
+              - Practice & assessment: python-backend-engineering/phase-4/module-8/practice.md
+          - Phase assessment: python-backend-engineering/phase-4/assessment.md
+          - Project — deferred: python-backend-engineering/phase-4/project.md
+      - "Phase 5 — PostgreSQL, SQL and data persistence":
+          - python-backend-engineering/phase-5/index.md
+          - "Module 9 — Relational modeling and SQL":
+              - python-backend-engineering/phase-5/module-9/index.md
+              - Practice & assessment: python-backend-engineering/phase-5/module-9/practice.md
+          - "Module 10 — Transactions, concurrency and scalability":
+              - python-backend-engineering/phase-5/module-10/index.md
+              - Practice & assessment: python-backend-engineering/phase-5/module-10/practice.md
+          - Phase assessment: python-backend-engineering/phase-5/assessment.md
+          - Project — deferred: python-backend-engineering/phase-5/project.md
+      - "Phase 6 — Redis, messaging and distributed systems":
+          - python-backend-engineering/phase-6/index.md
+          - "Module 11 — Caching and coordination":
+              - python-backend-engineering/phase-6/module-11/index.md
+              - Practice & assessment: python-backend-engineering/phase-6/module-11/practice.md
+          - "Module 12 — Messaging and distributed workflows":
+              - python-backend-engineering/phase-6/module-12/index.md
+              - Practice & assessment: python-backend-engineering/phase-6/module-12/practice.md
+          - Phase assessment: python-backend-engineering/phase-6/assessment.md
+          - Project — deferred: python-backend-engineering/phase-6/project.md
+      - "Phase 7 — Security, observability and reliability":
+          - python-backend-engineering/phase-7/index.md
+          - "Module 13 — Backend application security":
+              - python-backend-engineering/phase-7/module-13/index.md
+              - Practice & assessment: python-backend-engineering/phase-7/module-13/practice.md
+          - "Module 14 — Operational reliability":
+              - python-backend-engineering/phase-7/module-14/index.md
+              - Practice & assessment: python-backend-engineering/phase-7/module-14/practice.md
+          - Phase assessment: python-backend-engineering/phase-7/assessment.md
+          - Project — deferred: python-backend-engineering/phase-7/project.md
+      - "Phase 8 — Cloud, DevOps and backend infrastructure":
+          - python-backend-engineering/phase-8/index.md
+          - "Module 15 — Containers, automation and AWS":
+              - python-backend-engineering/phase-8/module-15/index.md
+              - Practice & assessment: python-backend-engineering/phase-8/module-15/practice.md
+          - "Module 16 — Kubernetes and delivery":
+              - python-backend-engineering/phase-8/module-16/index.md
+              - Practice & assessment: python-backend-engineering/phase-8/module-16/practice.md
+          - Phase assessment: python-backend-engineering/phase-8/assessment.md
+          - Project — deferred: python-backend-engineering/phase-8/project.md
+      - "Phase 9 — Advanced architecture and system design":
+          - python-backend-engineering/phase-9/index.md
+          - "Module 17 — Software architecture":
+              - python-backend-engineering/phase-9/module-17/index.md
+              - Practice & assessment: python-backend-engineering/phase-9/module-17/practice.md
+          - "Module 18 — Distributed system design":
+              - python-backend-engineering/phase-9/module-18/index.md
+              - Eight design studies: python-backend-engineering/phase-9/module-18/design-studies.md
+              - Practice & assessment: python-backend-engineering/phase-9/module-18/practice.md
+          - Phase assessment: python-backend-engineering/phase-9/assessment.md
+          - Project — deferred: python-backend-engineering/phase-9/project.md
+      - "Phase 10 — Senior engineering interviews":
+          - python-backend-engineering/phase-10/index.md
+          - "Module 19 — Coding and technical problem solving":
+              - python-backend-engineering/phase-10/module-19/index.md
+              - Practice & assessment: python-backend-engineering/phase-10/module-19/practice.md
+          - "Module 20 — Senior interview simulation":
+              - python-backend-engineering/phase-10/module-20/index.md
+              - Practice & assessment: python-backend-engineering/phase-10/module-20/practice.md
+          - Phase assessment: python-backend-engineering/phase-10/assessment.md
+          - Final competency review: python-backend-engineering/phase-10/competency-review.md
+          - Project — deferred: python-backend-engineering/phase-10/project.md
       - Progress & checkpoints: python-backend-engineering/progress.md
       - Complete course plan: python-backend-engineering/course-plan.md
 

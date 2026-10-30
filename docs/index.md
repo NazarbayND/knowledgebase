@@ -10,9 +10,10 @@ reference material, and study notes.
 | --- | --- | --- | --- |
 | **Python Backend Engineering** | [Subject overview](python-backend-engineering/index.md) | [Learning path](python-backend-engineering/learning-path.md) | [Progress & checkpoints](python-backend-engineering/progress.md) |
 
-The first subject includes [Python fundamentals](python-backend-engineering/phase-1/index.md)
-and [runtime internals & concurrency](python-backend-engineering/phase-2/index.md):
-four modules with exercises, assessments, and runnable practical projects.
+The first subject includes the full [Python Backend Engineering curriculum](python-backend-engineering/curriculum-map.md):
+10 phases and 20 modules, from Python foundations to production architecture and
+senior interviews. Phase 1–2 examples are runnable; later practical projects are
+deferred while their lessons, written exercises and assessments are available.
 
 ## Choose how to learn
 

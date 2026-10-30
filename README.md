@@ -2,8 +2,9 @@
 
 A topic-agnostic personal knowledge base built with MkDocs Material. Independent
 subjects share a searchable library without sharing a prescribed curriculum
-structure. Python Backend Engineering is the first subject, with Phases 1–2,
-four modules, implementation exercises, interviews, assessments and practical projects.
+structure. Python Backend Engineering is the first subject, with all 10 phases and
+20 modules, lessons, exercises, interviews and assessments. Phase 1–2 runnable
+examples are retained; Phases 3–10 practical projects are intentionally placeholders.
 
 Start at the [library dashboard](docs/index.md), explore the
 [Python subject](docs/python-backend-engineering/index.md), or read the saved
@@ -45,6 +46,8 @@ docs/
     course-plan.md               # Complete supplied curriculum, including future phases
     phase-1/                     # Modules 1–2, practice, inventory project
     phase-2/                     # Modules 3–4, practice, runtime/concurrency project
+    phase-3/ ... phase-10/        # Modules 5–20, written practice, assessments
+    curriculum-map.md            # Every module and project status in the saved plan
 examples/
   python-backend-engineering/    # Python 3.14 package, tests and uv.lock
 mkdocs.yml                       # Platform and explicit navigation
@@ -64,6 +67,10 @@ runtime inspection/profiling, a bounded HTTP client and a temporary local HTTP l
 The enriched study route also includes four worked walkthroughs, a streaming CSV
 reporter, descriptor/decorator investigations, a membership benchmark, deterministic
 race/failure labs, and cumulative assessments with model answers for both phases.
+The remaining phases cover HTTP/ASGI, FastAPI, PostgreSQL, Redis/messaging,
+security/observability, cloud/Kubernetes, architecture and senior interviews.
+They include written code/SQL/design examples and failure analysis, with no new
+service dependencies, deployment artifacts or practical project implementation.
 
 ## Add or extend a subject
 
