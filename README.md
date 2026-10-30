@@ -84,11 +84,15 @@ run the strict build and a local preview before committing both files.
 
 ## GitHub Pages
 
-The documentation workflow validates pushes and pull requests. To publish:
+The documentation workflow validates pull requests and pushes to `main`. To enable
+automatic publication:
 
 1. In repository Settings → Pages, select **GitHub Actions** as the source.
-2. Run the **Documentation** workflow manually from the default branch.
+2. Push or merge changes into `main`.
 
-Only manual runs on the default branch deploy. Pull requests and pushes build
-the site without publishing it. If the repository owner or name changes,
+After the documentation build and Python example checks succeed, pushes to `main`
+automatically deploy the site. Pull requests run validation only. You can also
+manually run the **Documentation** workflow on `main` to redeploy.
+
+If the repository owner or name changes,
 update `site_url`, `repo_url`, and `repo_name` in `mkdocs.yml`.
