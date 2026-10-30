@@ -80,6 +80,32 @@ Prefetch and worker concurrency determine how much work one consumer holds.
 Choose bounded in-flight capacity and shutdown behavior: stop claiming work,
 finish/cancel owned jobs and acknowledge only at the defined durable boundary.
 
+### Give an event a stable identity and a versioned meaning
+
+An illustrative envelope is:
+
+```json
+{
+  "event_id": "e-42",
+  "event_type": "order.created",
+  "schema_version": 1,
+  "tenant_id": "A",
+  "aggregate_id": "o-9",
+  "occurred_at": "2026-01-02T12:00:00Z",
+  "data": {"total_minor": 1200, "currency": "USD"}
+}
+```
+
+Retries/redelivery retain event_id. A new attempt id can be separate metadata;
+changing business event identity on retry defeats deduplication. Validate trusted
+publisher/tenant and schema meaning before applying the effect. Correlation and
+causation metadata can link diagnostics without becoming unbounded metric labels.
+
+Old messages can outlive a deployment. Adding a required field, changing units or
+reusing a name with new meaning can break replay. Version deliberately, retain
+needed old-reader compatibility and quarantine unsupported versions with an owner.
+An additive field is safe only under consumers' actual unknown-field policy.
+
 ## Idempotent consumers
 
 For a database-local effect, persist a processed-event identity and the business
@@ -117,6 +143,21 @@ For an external email, a local transaction cannot atomically commit the provider
 send. Marking done before it risks loss; afterward risks duplicates on an unknown
 outcome. Use a provider-supported idempotency/status/reconciliation contract or
 make the workflow's uncertainty explicit.
+
+### Claim and effect must share a transaction
+
+A PostgreSQL-local dedup claim can use a uniqueness constraint and
+INSERT ... ON CONFLICT DO NOTHING RETURNING event_id. A returned row means this
+transaction claimed the event; no returned row takes the duplicate path. Apply
+the local effect in that same transaction, then acknowledge after successful commit.
+
+If the effect fails, rolling back must also remove the uncommitted claim. If the
+worker crashes after commit but before ack, redelivery finds the committed claim
+and does not repeat the local effect. Scope identity by consumer and the event's
+documented uniqueness domain.
+
+This reasoning does not atomically cover an arbitrary provider call. Use its
+idempotency/status/reconciliation protocol and keep the unknown outcome explicit.
 
 ## Retries and dead letters
 

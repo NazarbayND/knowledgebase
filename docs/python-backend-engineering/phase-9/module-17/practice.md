@@ -37,6 +37,20 @@
     sourcing changes the authoritative state model. ADRs preserve assumptions,
     rejected alternatives, consequences and revisit evidence.
 
+## Self-check before the assessment
+
+A state-based service adds an outbox of order-created events. Has it become event-sourced or necessarily implemented CQRS?
+
+??? note "Model answer and a five-point check"
+    No. The outbox durably coordinates publication with current state; event sourcing makes a defined event history authoritative for reconstruction. CQRS separates command/query paths and can exist without event sourcing or multiple databases. Choose these mechanisms from required semantics, replay/evolution and operating cost rather than labels.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for boundary/pattern mechanisms, 30 for invariant/data ownership coherence,

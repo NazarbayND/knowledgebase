@@ -38,6 +38,20 @@ Rewrite a vague story such as “we improved performance” using a real constra
 your own decision, alternatives, verified result and remaining limit. Do not invent
 numbers to satisfy the format. Include what you learned and what changed afterward.
 
+## Self-check before the assessment
+
+An interview story claims a 40% p99 improvement, but no latency measurements were recorded. How should you improve the answer without inventing evidence?
+
+??? note "Model answer and a five-point check"
+    State the real situation, your responsibility, chosen investigation/actions, actual observed outcome and missing measurement. Explain how you would collect comparable latency/error evidence. Separate individual work from the team's contribution and identify a concrete lesson. A truthful bounded result is stronger than a precise unsupported metric.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Score 25 for mechanisms/requirements, 30 for solution correctness, 20 for debugging,

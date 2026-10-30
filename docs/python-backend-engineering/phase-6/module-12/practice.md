@@ -40,6 +40,20 @@
     visibility permits another delivery. Retry multiplication and synchronized
     bursts consume the very capacity needed to recover.
 
+## Self-check before the assessment
+
+An outbox relay publishes e-42, receives acceptance, then crashes before recording delivery. What should happen after restart, and which guarantee remains outside a local dedup transaction?
+
+??? note "Model answer and a five-point check"
+    It may publish e-42 again with the same stable business identity. Consumers must tolerate redelivery; a unique processed-event claim and database-local effect share one transaction. An arbitrary external email/payment cannot be atomically covered by that local claim, so use provider idempotency/status/reconciliation or an explicit uncertainty policy.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for delivery/consistency mechanisms, 30 for a complete workflow contract,

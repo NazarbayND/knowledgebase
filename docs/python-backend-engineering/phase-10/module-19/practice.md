@@ -10,6 +10,8 @@ deferred; small code/SQL answers can be written independently without building i
 | 20 min | First position >= target in sorted data | Interval invariant, duplicates/empty edges, O(log n) explanation |
 | 25 min | Longest substring with distinct code points | Monotonic window, overlap cases, O(n) average time/space analysis |
 | 25 min | Shortest path distances in an unweighted graph | Queue/visited semantics, cycles/disconnected nodes, O(V+E) |
+| 20 min | Pair sum in a sorted sequence | Distinct indices, monotonic pointer proof, no-match/negative/duplicate cases |
+| 25 min | Preorder binary-tree traversal | Visit order, empty/skewed trees, working stack vs output memory |
 | 25 min | Top k frequent SKUs | Counting, tie policy, heap vs full sort costs |
 | 30 min | Minimum coins for an amount | State/base/transition, unreachable case and why greedy can fail |
 | 30 min | Rank tenant customers by spend | Correct join grain, ties/nulls, query/index reasoning |
@@ -34,11 +36,29 @@ deferred; small code/SQL answers can be written independently without building i
 
 ## Review questions
 
+Use the [SQL workbook](../../phase-5/module-9/query-workbook.md) for complete query
+fixtures and result walkthroughs after your independent attempt. Rotate timed
+prompts through the existing study budget rather than adding every timebox to one session.
+
 - What is your precondition, invariant and termination argument?
 - Which edge case would break your first approach?
 - What are time, extra memory and output costs?
 - Which behavior is promised and which production capability is deferred?
 - How would you test a failure instead of only the happy path?
+
+## Self-check before the assessment
+
+For sorted [1, 2, 4, 7] and target 9, what should the two-pointer pair-sum return? Explain why the first pointer move cannot discard a valid pair using that left value.
+
+??? note "Model answer and a five-point check"
+    It returns indices (1, 3), representing 2+7. Initially 1+7=8; pairing 1 with any smaller right value cannot reach 9, so discarding that left candidate is safe. The interval shrinks until success or exhaustion. Distinct indices, sorted-input precondition and whether sorting must preserve original positions belong to the contract.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
 
 ## Mastery assessment
 

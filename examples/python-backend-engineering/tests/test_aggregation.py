@@ -113,14 +113,41 @@ def test_programming_failure_cancels_siblings() -> None:
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("options", [{"concurrency": 0}, {"request_timeout": 0}, {"queue_size": 0}])
-def test_invalid_resource_limits(options: dict[str, int]) -> None:
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"concurrency": 0},
+        {"concurrency": -1},
+        {"concurrency": True},
+        {"concurrency": 1.5},
+        {"concurrency": "2"},
+        {"queue_size": 0},
+        {"queue_size": -1},
+        {"queue_size": True},
+        {"queue_size": 1.5},
+        {"queue_size": "2"},
+        {"request_timeout": 0},
+        {"request_timeout": -1},
+        {"request_timeout": True},
+        {"request_timeout": "2"},
+        {"request_timeout": None},
+        {"request_timeout": float("nan")},
+        {"request_timeout": float("inf")},
+        {"request_timeout": float("-inf")},
+        {"request_timeout": 10**1000},
+    ],
+)
+def test_invalid_resource_limits(options: dict[str, object]) -> None:
     with pytest.raises(ValueError):
         asyncio.run(aggregate([], **options))
 
 
 def test_empty_batch() -> None:
     assert asyncio.run(aggregate([])) == []
+
+
+def test_positive_integer_timeout_is_supported() -> None:
+    assert asyncio.run(aggregate([], request_timeout=1)) == []
 
 
 def test_real_http_boundary() -> None:

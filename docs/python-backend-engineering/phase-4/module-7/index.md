@@ -213,6 +213,29 @@ A lifespan-owned engine/client and request-owned session solve different lifetim
 needs. Module import is neither: importing a helper during a test should not start
 production network resources.
 
+### Modern yield-dependency scopes — make cleanup timing explicit
+
+In FastAPI versions supporting the documented scope option:
+
+| Yield dependency scope | Cleanup boundary | Suitable question |
+| --- | --- | --- |
+| request (default for yield dependencies) | After response handling/sending finishes | Does the response stream still need this resource? |
+| function | After the path-operation function, before response is sent | Can this resource be released before sending the response? |
+
+A request-scoped dependency cannot depend on a shorter function-scoped
+sub-dependency whose resource it may need during its later cleanup. Follow the
+framework's scope/lifetime rules and choose the eventually pinned version.
+
+Do not make a successful business commit an accidental after-response cleanup
+step: commit expected writes in the use case before reporting success. Cleanup
+still rolls back uncommitted/failed work and releases resources. A long stream
+needing database state may require a separate lifetime/architecture to avoid
+holding transactions while the client reads slowly.
+
+The [official yield-dependency guide](https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/)
+documents scope and exception propagation; re-raise failures you have not
+deliberately translated rather than silently swallowing them.
+
 ## Execution, authentication and testing seams
 
 An async route/dependency should use async I/O. Framework-managed sync callables

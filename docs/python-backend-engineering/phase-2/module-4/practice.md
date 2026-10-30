@@ -71,6 +71,20 @@ the [lifecycle walkthrough](concurrency-patterns.md).
     rate limit. Shutdown requires deadlines, task ownership and operation-specific
     stopping rather than assuming cancellation kills threads.
 
+## Self-check before the assessment
+
+One TaskGroup child raises ValueError while its sibling waits. Contrast this with default gather, and state who must own any unfinished work.
+
+??? note "Model answer and a five-point check"
+    TaskGroup cancels unfinished siblings, awaits their cleanup and then propagates grouped non-cancellation failures. Default gather propagates the child's ordinary error without automatically cancelling every sibling; the caller still owns them. Runner shutdown can later cancel tasks and must not be mistaken for gather's error behavior. Cancellation itself has distinct semantics.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Timebox: **75 minutes implementation/diagnosis + 20 minutes explanation**.

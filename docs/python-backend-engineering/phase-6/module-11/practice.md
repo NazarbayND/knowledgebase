@@ -38,6 +38,20 @@
     fenced. Unbounded fallback floods the source. Rate limiting bounds admission
     over time while pools bound connection concurrency.
 
+## Self-check before the assessment
+
+Tenant A and B each have product 7, but the cache uses product:7. Can a short TTL make this safe?
+
+??? note "Model answer and a five-point check"
+    No. The key omits a representation/access dimension and can return the wrong tenant's value before expiry. Include authorized tenant context and other relevant representation/version dimensions, then apply access policy at the source/use case too. TTL governs expiry, not permission. Test same identifiers across different tenants.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for Redis/consistency mechanisms, 30 for cache/limiter contracts, 20 for

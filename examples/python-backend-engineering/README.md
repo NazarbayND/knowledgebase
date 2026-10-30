@@ -65,6 +65,11 @@ extensions, solutions and cumulative reviews are linked from the phase navigatio
 
 ## Boundaries
 
+Worker count and queue capacity must be positive integers (bool is rejected).
+The per-request timeout must be a positive finite number. Invalid configuration
+raises ValueError before client/task creation, including NaN/infinity and values
+too large to represent as a finite timeout.
+
 - The inventory service is single-process and not transaction-safe. Tenant keys
   prevent accidental lookup collisions, not unauthorized access. Authentication
   and transactional concurrency arrive in later course phases.

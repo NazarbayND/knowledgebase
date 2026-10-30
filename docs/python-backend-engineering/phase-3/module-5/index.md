@@ -188,6 +188,40 @@ its observed version is stale. Cache validation and write preconditions use vers
 knowledge, but neither replaces the transaction enforcing the change. No-cache
 allows storage with revalidation; no-store prohibits compliant storage.
 
+### Worked exchange — revalidation differs from a write precondition
+
+A cached representation has a strong validator "product-v8". The client can
+revalidate a read:
+
+```http
+GET /v1/products/p7
+If-None-Match: "product-v8"
+
+HTTP/1.1 304 Not Modified
+ETag: "product-v8"
+```
+
+No representation body is sent with 304. For a write, If-Match asks the server
+to apply the change only if the expected strong validator still matches:
+
+```http
+PATCH /v1/products/p7
+If-Match: "product-v8"
+Content-Type: application/json
+
+{"name":"Updated"}
+```
+
+If version 9 is current, the precondition fails with 412 rather than overwriting
+it. The storage check and write must share the required atomic boundary.
+Idempotency keys solve a different retry/outcome problem.
+
+Weak ETags, such as W/"product-v8", allow weaker representation equivalence for
+appropriate cache validation; If-Match uses strong comparison. Do not treat a
+weak tag as a valid optimistic-write version just because its text looks familiar.
+Malformed syntax, unsupported request media type (415) and unavailable acceptable
+response representation (406) also describe different contract failures.
+
 ## Resource contracts and pagination
 
 REST-style resources should have stable identifiers and clear relationships.

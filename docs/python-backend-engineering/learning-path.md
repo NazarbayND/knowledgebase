@@ -4,7 +4,7 @@ Use this page to plan study within [Python Backend Engineering](index.md).
 The subject owns its sequence and checkpoints; the library's other subjects can
 follow different structures.
 
-## Implemented sequence
+## Foundation sequence — Modules 1–4 {#implemented-sequence}
 
 | Order | Study | Apply | Checkpoint |
 | --- | --- | --- | --- |
@@ -43,6 +43,10 @@ design review. Phases 3–10 project implementations remain deferred; do not cou
 unrun integration, deployment or load-test requirements as demonstrated skills.
 
 ## Study cycle
+
+Start with the [study and assessment guide](assessment-guide.md) for scoring
+anchors and evidence rules. Use the [glossary](glossary.md) to resolve terminology,
+then answer a module's self-check before opening its model answer.
 
 For a deeper pass, follow each module's worked page after its core chapters:
 [semantics and streaming](phase-1/module-1/worked-examples.md),

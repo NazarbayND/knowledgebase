@@ -54,7 +54,7 @@ Requirements:
 
 - Annotate the interface using `Sequence[str]`, `list[Result]` and the optional
   HTTPX async transport type.
-- Require a positive budget. Use the existing aggregator with a per-request
+- Require a positive finite numeric budget, rejecting bool/invalid values. Use the existing aggregator with a per-request
   timeout of ten seconds, so tests can distinguish the shorter batch deadline.
 - Include queue wait and worker completion in the total budget scope.
 - On batch expiry, raise TimeoutError rather than returning a partial success list.
@@ -68,6 +68,7 @@ Scoring: **10** for typed API/validation, **10** for deadline and result semanti
     ```python
     import asyncio
     from collections.abc import Sequence
+    from math import isfinite
     import httpx
     from fulfillhub.aggregation import Result, aggregate
 
@@ -75,9 +76,15 @@ Scoring: **10** for typed API/validation, **10** for deadline and result semanti
         urls: Sequence[str], *, budget: float,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> list[Result]:
-        if budget <= 0:
-            raise ValueError("budget must be positive")
-        async with asyncio.timeout(budget):
+        if isinstance(budget, bool) or not isinstance(budget, (int, float)):
+            raise ValueError("budget must be a positive finite number")
+        try:
+            seconds = float(budget)
+        except OverflowError as exc:
+            raise ValueError("budget must be a positive finite number") from exc
+        if not isfinite(seconds) or seconds <= 0:
+            raise ValueError("budget must be a positive finite number")
+        async with asyncio.timeout(seconds):
             return await aggregate(urls, request_timeout=10, transport=transport)
     ```
 
@@ -91,9 +98,10 @@ Scoring: **10** for typed API/validation, **10** for deadline and result semanti
     the request began. Timing supplies the deadline trigger, not a fixed speed
     assertion. Existing aggregation tests demonstrate the cleanup pattern.
 
-    This small solution assumes the annotated numeric caller contract. A public
-    configuration boundary would additionally validate non-numeric values, NaN,
-    infinity and any bool policy before calling it. State that scope explicitly.
+    The solution rejects NaN, infinity, bool, non-numeric values and an
+    unrepresentably large budget. Deployment-specific maximums, units and
+    admission/body/output limits still require their own contract. Validation
+    is a prerequisite, not an automatically safe capacity policy.
 
 ## C. Diagnose two failures — 20 points
 

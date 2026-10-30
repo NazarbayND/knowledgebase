@@ -41,6 +41,20 @@
     them. Replicas copy state, partitions divide a table's data organization, and
     backups support historical recovery.
 
+## Self-check before the assessment
+
+Two transactions both read stock=1, each writes its precomputed zero and each creates an order. Stock never became negative. Was the stock invariant preserved?
+
+??? note "Model answer and a five-point check"
+    No: two units were allocated from one. A nonnegative column check does not relate supply to committed allocations/orders. Use a guarded decrement, suitable lock/version protocol or Serializable boundary, inspect allocation success and combine related effects in one transaction. At other isolation levels the conflict outcome can differ; state the actual protocol and retry policy.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for isolation mechanisms, 30 for a correct transaction/concurrency contract,

@@ -4,6 +4,10 @@ Track work within [Python Backend Engineering](index.md). Edit this Markdown pag
 to save progress; checkbox state is stored in Git and does not change when clicked
 in the rendered site.
 
+Use the [assessment guide](assessment-guide.md) for scoring anchors and record
+independent, hinted and incomplete attempts separately. Reading a model answer
+is not a completed independent attempt.
+
 ## Module checkpoints
 
 | Unit | Status | Assessment | Score | Evidence / date |
@@ -68,8 +72,7 @@ Each assessment uses **25 concepts + 30 correctness + 20 debugging + 15 tradeoff
 10 communication = 100 points**, with an **80/100** passing target. Required
 invariants must hold even when the numeric score passes. Written assessments
 do not satisfy deferred implementation, deployment or measured-performance gates.
-Begin the next session
-with weak areas. The whole-course [18-competency checklist](course-plan.md#8-senior-python-backend-engineer-competency-checklist)
+Begin the next session with weak areas. The whole-course [18-competency checklist](course-plan.md#8-senior-python-backend-engineer-competency-checklist)
 remains the long-term readiness benchmark.
 
 ## Checkpoint criteria

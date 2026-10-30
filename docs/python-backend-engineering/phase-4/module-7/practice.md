@@ -40,6 +40,20 @@
     Sync helpers, serializers and CPU work remain potential blockers even inside
     an async handler.
 
+## Self-check before the assessment
+
+A streaming response reads from a yield dependency. Compare function and request scope, then explain why a business commit should not be postponed until after a successful response.
+
+??? note "Model answer and a five-point check"
+    Function scope closes before response sending; request scope extends through the request/response lifetime in versions supporting that contract. A stream cannot use a closed resource, but retaining transactions for slow consumers can exhaust pools. Commit the use case before reporting successful effects; cleanup still rolls back failures/uncommitted work and releases resources. Check the selected FastAPI version.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for framework mechanisms, 30 for schemas/dependency/error correctness,

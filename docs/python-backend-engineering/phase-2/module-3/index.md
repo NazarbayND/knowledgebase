@@ -348,6 +348,32 @@ class later constructs an instance. A class decorator or __init_subclass__ often
 satisfies registration needs with fewer inheritance constraints than a custom
 metaclass. Choose the smallest hook that explains the required behavior.
 
+### P2 example — a metaclass constructs the class, not its instances
+
+```python
+class Labelled(type):
+    def __new__(metaclass, name, bases, namespace):
+        result = super().__new__(metaclass, name, bases, namespace)
+        result.label = name.lower()
+        return result
+
+class Exporter(metaclass=Labelled):
+    pass
+
+print(type(Exporter) is Labelled)
+print(Exporter.label)
+print(isinstance(Exporter(), Exporter))
+```
+
+Expected output is True, exporter, then True. Defining Exporter executes its class
+body and lets Labelled create that class object. Exporter() later creates a normal
+instance. A metaclass can influence class-wide construction rules; it is a
+different hook from wrapping a function or creating one instance.
+
+For a simple label/registry, a class decorator or __init_subclass__ is often
+easier to compose. The point is understanding lifecycle and framework behavior,
+not introducing metaclasses into ordinary services without a requirement.
+
 ## Structural typing and variance
 
 Structural typing asks whether the operations match; nominal typing asks whether

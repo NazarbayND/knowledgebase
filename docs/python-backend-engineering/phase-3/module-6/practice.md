@@ -41,6 +41,20 @@
     handles uncertain outcomes. Idle connection management and execution deadlines
     protect different resources.
 
+## Self-check before the assessment
+
+A gateway returns 504, but the application later commits an order. What can the client infer, and is retrying with a new operation identity safe?
+
+??? note "Model answer and a five-point check"
+    The gateway's waiting budget expired; this does not prove no business effect occurred. Reuse the durable idempotency/operation identity and recover or reconcile the outcome under the API contract. A new identity can create a duplicate. Trace which hop responded and where the commit lies rather than assuming a timeout rolled back downstream work.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Award 25 for interface/lifetime explanations, 30 for a correct request/shutdown

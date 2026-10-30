@@ -275,6 +275,17 @@ PostgreSQL version. Alembic can describe operations, but autogeneration cannot
 infer the business meaning of a rename or prove a deployment is backwards compatible.
 The practical migration is deferred; this is the compatibility reasoning it must implement.
 
+### Work the result before discussing the plan
+
+Use the [SQL query workbook](query-workbook.md) for complete fixtures, queries and
+expected rows covering left joins/NULLs, tenant-safe aggregation, ties, join
+multiplication, cursor boundaries and running window frames.
+
+These examples fill a different need from EXPLAIN: they establish what the query
+should return. Only then compare representative PostgreSQL plans, buffers and
+query counts. SUM(DISTINCT total) is not a general repair for multiplied joins,
+because two different orders may legitimately have equal totals.
+
 ## Worked failure analysis
 
 A reporting join doubles revenue when an order has two audit events. Inspect

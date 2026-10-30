@@ -233,6 +233,37 @@ are a model, not a performance assertion. Awaiting an already-finished operation
 may not suspend at all, so count actual waiting opportunities rather than the
 number of await keywords in a function.
 
+### Python 3.14 detail — task startup can be eager
+
+Creating a coroutine object does not run its body. Task creation is a separate
+operation, and Python 3.14 supports explicit eager startup:
+
+```python
+import asyncio
+
+async def main():
+    events = []
+
+    async def immediate():
+        events.append("body")
+        return 1
+
+    task = asyncio.create_task(immediate(), eager_start=True)
+    events.append("after create_task")
+    print(events)
+    print(await task)
+
+asyncio.run(main())
+```
+
+On the course's CPython 3.14 runtime this prints ['body', 'after create_task'],
+then 1. The coroutine completed without suspending during task creation. Default
+or configured task factories can produce other startup scheduling behavior.
+
+Do not rely on a particular interleaving for correctness. Use explicit events,
+locks or ownership when ordering matters. See the
+[Python 3.14 create_task contract](https://docs.python.org/3.14/library/asyncio-task.html#asyncio.create_task).
+
 ## Structured tasks and cancellation
 
 `TaskGroup` owns its children: leaving its scope waits for them; an unexpected
@@ -524,6 +555,19 @@ before closing resources they use. Work that must survive process restart needs
 durable acceptance/queue semantics; an unowned create_task call is not that
 guarantee. Semaphore, pool, queue, rate limiter and deadline each bound different
 dimensions, so describe their combined contract explicitly.
+
+### Validate capacity configuration before creating child work
+
+A positive-value check alone is insufficient. bool subclasses int; fractional
+worker counts cannot drive range; NaN does not behave like an ordinary ordered
+number; infinity removes the intended finite deadline.
+
+The reference aggregator now requires positive integer worker/queue counts and
+a positive finite timeout, rejecting invalid configuration with ValueError before
+opening the client or creating workers. Its regression cases cover bool/fractional
+counts, strings, NaN/infinity and an unrepresentably large timeout. Validation
+does not choose a safe maximum for your deployment: admission/body/output limits
+and downstream capacity still need an explicit policy.
 
 ## Engineering decisions and common mistakes
 

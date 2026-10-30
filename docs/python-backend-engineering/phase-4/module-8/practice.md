@@ -38,6 +38,20 @@
     transport bypasses network/proxy behavior and may need explicit lifespan.
     A modular monolith with explicit seams supports incremental refactoring.
 
+## Self-check before the assessment
+
+Repository A commits stock, then repository B fails inserting the order. Can a rollback in B's session restore A, and where should the transaction owner be?
+
+??? note "Model answer and a five-point check"
+    No: B cannot undo A's already committed transaction. The use case needs one Unit of Work for the related stock/order/outbox effects, with repository operations inside it. An allocation statement returning no row must abort the order path. External payment remains another boundary requiring its supported idempotency/workflow contract.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for ownership/architecture mechanisms, 30 for an internally consistent

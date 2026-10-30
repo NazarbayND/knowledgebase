@@ -38,6 +38,20 @@
     without Kubernetes operations. Storage/I/O, idle capacity, backups, telemetry,
     NAT and data movement materially affect total cost.
 
+## Self-check before the assessment
+
+CI tested image digest A. Production rebuilds the same source tag later and obtains digest B. Which artifact has test evidence, and what would make the release reproducible?
+
+??? note "Model answer and a five-point check"
+    The tests establish behavior for A's tested scope, not automatically B. Promote a reviewed immutable artifact identity through environments, or independently verify the new artifact under the relevant checks. A source tag or mutable image tag alone does not identify identical contents. Migration/configuration compatibility still matters beside image identity.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for delivery/cloud mechanisms, 30 for coherent pipeline/network/state

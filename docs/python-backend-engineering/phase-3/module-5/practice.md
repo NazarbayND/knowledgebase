@@ -44,6 +44,20 @@ These are written/design exercises; a running API project is deferred.
     validation; no-store disallows storage. CORS is enforced by cooperating browsers
     and does not prove a requester's identity or permission.
 
+## Self-check before the assessment
+
+A client has W/\"product-v8\" and sends it in If-Match for a write. Does matching the visible version text establish the required precondition?
+
+??? note "Model answer and a five-point check"
+    No. If-Match uses strong comparison, so a weak validator cannot satisfy the strong write precondition merely because its text resembles the current tag. If-None-Match cache revalidation has different comparison rules. The eventual storage precondition and mutation must still be atomic; ETags are not a substitute for authorization or transaction scope.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 points for protocol mechanisms, 30 for a precise endpoint/cache/pagination

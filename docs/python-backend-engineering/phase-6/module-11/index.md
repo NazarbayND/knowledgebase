@@ -52,6 +52,29 @@ Caching removes repeated source work only if key cardinality, value size, TTL an
 eviction policy fit the workload. It is not just replacing a database call with
 a Redis command.
 
+### Read a small command sequence and its expiry state
+
+This is an illustrative Redis CLI exchange, not a newly installed service:
+
+```text
+SET catalog:A:p7 '{"price_minor":100}' EX 60
+GET catalog:A:p7
+TTL catalog:A:p7
+DEL catalog:A:p7
+GET catalog:A:p7
+```
+
+SET creates a string value with a lifetime; GET retrieves its serialized bytes;
+TTL reports remaining whole seconds, so do not expect exactly 60 after intervening
+work. DEL removes it, and the final GET is absent. TTL uses -2 for a missing key
+and -1 for a key with no expiry. That difference matters when diagnosing a counter
+that accidentally became permanent.
+
+Use hashes/sets/sorted sets only when their operations fit the required data.
+A command's atomicity does not make multiple separate commands or a database plus
+Redis update one transaction. Namespacing and bounded value/cardinality/expiry
+remain part of the cache contract.
+
 ## Cache placement strategies
 
 | Strategy | Flow | Tradeoff |
@@ -250,6 +273,17 @@ This distinction matters when the resource is a database, file or external servi
 If that resource cannot enforce the intended protocol, "we used a distributed
 lock" is not enough proof. Prefer a database transaction/constraint when it naturally
 owns the invariant, and document lease timing/topology assumptions.
+
+### Fencing needs a genuinely ordered authority
+
+A counter is not automatically a safe fencing-token source if failover/restore
+can make its issued sequence go backwards or repeat. The authority issuing tokens
+and the protected resource's comparison must satisfy the required failure model.
+A token never checked by the resource cannot reject a stale holder.
+
+This is why a random owner token used to release a lease and an enforced fencing
+token are different mechanisms. State persistence, ordering and failover assumptions
+rather than treating an INCR call as proof of globally safe ownership.
 
 ## Outage behavior
 

@@ -122,7 +122,9 @@ partial success for you.
 The existing `aggregation.py` has one producer, a bounded queue, a fixed worker
 set, and one shared HTTP client. Walk through the scope in this order:
 
-1. Validate positive limits before creating workers.
+1. Validate positive integer worker/queue limits and a positive finite timeout
+   before opening the client or creating workers. Reject bool counts, fractional
+   counts, NaN and infinity rather than discovering them inside child tasks.
 2. Allocate a bounded pending queue and finite result slots.
 3. Enter the shared client's lifetime; configure connection limits.
 4. Enter TaskGroup and start producer/workers.

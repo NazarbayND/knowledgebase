@@ -36,6 +36,20 @@
     not arbitrary actions from compromised script. Identifiers/expressions cannot
     be treated like ordinary bound values and need controlled construction.
 
+## Self-check before the assessment
+
+A correctly signed unexpired token is intended for another API. A separate valid user has the right role but belongs only to another tenant. Which boundaries reject these cases?
+
+??? note "Model answer and a five-point check"
+    The first fails the access-token issuer/audience/use validation contract, commonly an authentication rejection. The second passes identity validation but fails tenant/object authorization despite role compatibility. A verifier override cannot prove real token validation. Include forbidden field/admin-action cases and a consistent public 401/403/404 policy.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for identity/security mechanisms, 30 for a complete authorization/verifier

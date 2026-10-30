@@ -45,6 +45,20 @@ design reviews, matching the original roadmap. Use the other studies for revisio
 - What happens when one region remains writable after failover?
 - How does your proposed improvement affect cost and the support team?
 
+## Self-check before the assessment
+
+Estimate raw retained payload for ten million events/day, 1,000 bytes/event, three copies and 30 days. What must be added before calling it a storage budget?
+
+??? note "Model answer and a five-point check"
+    The decimal payload estimate is 10 GB/day × 3 × 30 = 900 GB. Add indexes, metadata, serialization/protocol overhead where relevant, backups, headroom and actual retention/compaction behavior. Peak and tenant skew affect throughput separately. This is planning arithmetic, not a measured capacity claim.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for mechanisms/requirements, 30 for coherent APIs/data/invariants, 20 for

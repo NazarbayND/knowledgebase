@@ -151,6 +151,28 @@ Apply object and field checks too: an editor allowed to change a description may
 not change tenant_id or grant itself an admin role. UUIDs and authentication do
 not remove these checks.
 
+### Negative-case matrix — identify the failed boundary
+
+| Case | Expected policy direction |
+| --- | --- |
+| Invalid signature or disallowed algorithm | Reject authentication |
+| Correct signature, wrong issuer/audience/token use | Reject authentication |
+| Expired/not-yet-valid token beyond allowed skew | Reject authentication |
+| ID token presented where an API access token is required | Reject the wrong credential contract |
+| Valid identity without required action permission | Deny authorization |
+| Same role, another tenant's object | Deny object access |
+| Allowed object action, forbidden administrative field | Deny property change |
+| Caller-supplied key URL or tenant membership claim not trusted by policy | Do not expand trust from unverified input |
+
+Authentication failures commonly map to 401 and permission failures to 403, with
+a deliberate 404 concealment policy where appropriate. Document the chosen public
+behavior without leaking protected object existence. A JWKS fetch outage is an
+operational condition, not proof of a valid token: never accept unverifiable data,
+and distinguish outage handling from bad credentials under the API contract.
+
+Route tests with a verifier override can test authorization, but the original
+verifier needs its own negative cases for signature, issuer/audience and time.
+
 ## Sessions and browser risks
 
 Cookie sessions need Secure/HttpOnly/SameSite policies appropriate to the flow,

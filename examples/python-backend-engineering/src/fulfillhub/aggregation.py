@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
+from math import isfinite
 
 import httpx
 
@@ -23,8 +24,18 @@ async def aggregate(
     queue_size: int = 8,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> list[Result]:
-    if concurrency < 1 or request_timeout <= 0 or queue_size < 1:
-        raise ValueError("concurrency, timeout and queue_size must be positive")
+    if isinstance(concurrency, bool) or not isinstance(concurrency, int) or concurrency < 1:
+        raise ValueError("concurrency must be a positive integer")
+    if isinstance(queue_size, bool) or not isinstance(queue_size, int) or queue_size < 1:
+        raise ValueError("queue_size must be a positive integer")
+    if isinstance(request_timeout, bool) or not isinstance(request_timeout, (int, float)):
+        raise ValueError("request_timeout must be a positive finite number")
+    try:
+        timeout_seconds = float(request_timeout)
+    except OverflowError as exc:
+        raise ValueError("request_timeout must be a positive finite number") from exc
+    if not isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise ValueError("request_timeout must be a positive finite number")
     queue: asyncio.Queue[tuple[int, str] | None] = asyncio.Queue(maxsize=queue_size)
     results: list[Result | None] = [None] * len(urls)
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
@@ -44,7 +55,7 @@ async def aggregate(
                 index, url = item
                 try:
                     # Queue waiting is excluded; this is a per-request deadline.
-                    async with asyncio.timeout(request_timeout):
+                    async with asyncio.timeout(timeout_seconds):
                         response = await client.get(url)
                         response.raise_for_status()
                     results[index] = Result(url, response.status_code, response.text, None)
@@ -60,7 +71,7 @@ async def aggregate(
     # Do not use ambient proxy settings for this local learning client.
     # TLS verification remains enabled. Real deployments should choose proxy policy explicitly.
     async with httpx.AsyncClient(
-        limits=limits, timeout=request_timeout, trust_env=False, transport=transport
+        limits=limits, timeout=timeout_seconds, trust_env=False, transport=transport
     ) as client:
         async with asyncio.TaskGroup() as group:
             group.create_task(produce(), name="producer")

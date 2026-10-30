@@ -234,6 +234,21 @@ also needs bounded input/output/buffers, compatible rollout and recovery evidenc
 If an arrow has no owner for failure, adding a newer product at that arrow does
 not complete the architecture.
 
+### A global limit does not ensure tenant fairness
+
+Suppose one large tenant fills every worker slot while small tenants wait.
+A global semaphore bounds total concurrency but says nothing about who receives
+those slots. Consider tenant-scoped admission/quotas, fair scheduling or separate
+budgets where the isolation requirement earns that cost.
+
+Apply the policy at the actual shared scope; one per-process counter is not
+automatically a service-wide quota. Reserve capacity for control/recovery paths
+and avoid placing unbounded per-tenant queues behind a bounded global worker set.
+Measure queue wait and accepted/rejected work across representative tenant sizes.
+
+Fairness must not weaken transactional stock rules, authorization or durable
+acceptance. It is another resource/contract dimension, not a replacement for them.
+
 ## Optimize the right objective
 
 Compare cost, latency, operational complexity and recovery capability. A cache can

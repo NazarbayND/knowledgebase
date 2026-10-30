@@ -267,6 +267,21 @@ grace budget, cancel/await remaining work, then close pools. Closing a pool firs
 creates failures in requests the application still owns. A deployment that
 passes a startup check can still fail this termination sequence under slow clients.
 
+### Identify which hop generated a failure
+
+| Observation | Meaning to investigate |
+| --- | --- |
+| 502 from a proxy | Invalid/unusable upstream response under that proxy's behavior |
+| 503 | Service unavailable; inspect routing/readiness/capacity and the responding hop |
+| 504 from a gateway | Upstream waiting exceeded that hop's budget |
+| Application 500 | Unexpected application/server failure, with internal diagnostic evidence |
+
+These are diagnostic directions, not proof of one universal root cause. A proxy
+can time out while the application later commits successfully. Trace request and
+operation identities across hops and retain the retry/reconciliation contract.
+An upstream status does not by itself prove whether the handler started or the
+business write happened.
+
 ## Worked failure analysis
 
 After adding workers, p99 worsens while CPU stays low. Hypothesize pool saturation:

@@ -21,6 +21,12 @@ Take the [phase assessment](assessment.md), using the course's 25/30/20/15/10
 rubric and 80/100 target. Record evidence in [progress](../progress.md).
 A lesson being available does not mean the learner has demonstrated its competency.
 
+## Written SQL revision
+
+Before the phase review, work through the
+[SQL query workbook](module-9/query-workbook.md). Predict complete rows for joins,
+ties, cursor boundaries and window frames before opening the answers.
+
 ## Practical project
 
 [Transactional inventory and query optimization](project.md) is a **deferred project placeholder**.

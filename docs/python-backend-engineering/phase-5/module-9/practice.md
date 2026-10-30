@@ -39,6 +39,20 @@
     rows. Migration tools cannot infer business intent, lock budgets or every
     rename/evolution requirement.
 
+## Self-check before the assessment
+
+Two orders each total 100. Their audit joins produce two and three rows. What do naive SUM(total), SUM(DISTINCT total), and the intended order-grain sum produce?
+
+??? note "Model answer and a five-point check"
+    They produce 500, 100 and 200 respectively. DISTINCT on a value incorrectly collapses two genuinely different equal-priced orders. Preserve order grain through pre-aggregation or use EXISTS when only related-row existence matters. Check tenant keys, zero-match and NULL behavior too. See the query workbook for complete fixtures and results.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for relational/planner concepts, 30 for correct schema/query design, 20

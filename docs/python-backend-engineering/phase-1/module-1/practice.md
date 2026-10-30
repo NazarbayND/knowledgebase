@@ -158,6 +158,20 @@ Answer in 60–90 seconds, then give a small example:
 5. Why might a generator reduce memory and still hold a resource open?
 6. Where should malformed external input become a domain exception?
 
+## Self-check before the assessment
+
+A configuration value is 0. Compare value or 30 with 30 if value is None else value. Which preserves the caller's zero, and when should zero instead be rejected?
+
+??? note "Model answer and a five-point check"
+    The first expression returns 30; the second returns 0. Truthiness includes zero, while the explicit absence check identifies None. Whether zero is valid belongs to the setting's contract. Reject a forbidden zero explicitly rather than replacing it by accident. An empty collection or False can produce the same defaulting mistake.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Timebox: **60 minutes implementation + 20 minutes explanation**.

@@ -72,6 +72,33 @@ A backend page limit, feature switch or retry count needs a deliberate rule;
 validation should reject forbidden zeroes explicitly rather than replace them by
 accident. Unlike JavaScript, an empty Python list or dict is false.
 
+### Control flow — distinguish a completed search from an early exit
+
+```python
+def first_even(values):
+    for value in values:
+        if value < 0:
+            continue
+        if value % 2 == 0:
+            break
+    else:
+        return None
+    return value
+
+print(first_even([-2, 3, 4, 6]))
+print(first_even([1, 3]))
+```
+
+The results are 4 and None. continue skips the negative candidate. break ends
+the search at the first accepted even value; the loop's else executes only when
+no break occurred. An empty input also reaches else. This is loop completion
+behavior, not the else attached to an if.
+
+For a simple search, returning directly inside the loop is often clearer.
+Understand for/while, continue, break, early return and conditional expressions
+before choosing the shortest spelling. A condition checking truthiness may still
+conflate a valid zero with absence, so keep the result contract explicit.
+
 ## Identity and copying
 
 Assignment copies a reference, not an object. `==` invokes value comparison;

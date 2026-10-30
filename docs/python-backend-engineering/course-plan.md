@@ -48,9 +48,9 @@ reliable background processing, and failure modes before distributed-service des
 
 **Technology baseline:** Python 3.14 for the primary course runtime; study modern
 Python 3.15 features separately. Dependency compatibility matters more than using
-the newest interpreter. The supplied plan states “Python 3.15.1 was released on
-October 21, 2026”; this historical claim is retained as supplied, not independently
-verified. Existing Phase 1–2 runnable examples use Python 3.14. Later-phase excerpts
+the newest interpreter. Check official release notes and library compatibility
+before choosing a newer runtime. Existing Phase 1–2 runnable examples use Python
+3.14. Later-phase excerpts
 are teaching material; their service/project implementations remain deferred.
 
 ## 3. Complete curriculum — 10 phases, 20 modules

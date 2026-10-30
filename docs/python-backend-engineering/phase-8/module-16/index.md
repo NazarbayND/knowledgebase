@@ -208,6 +208,22 @@ traffic and meaningful abort signals; one easy tenant can hide a size-dependent
 failure. Blue-green provides a traffic switch at additional capacity/state cost,
 not an automatic reversal of every database or business effect.
 
+### Rollout counts are capacity targets, not a guarantee against failures
+
+With desired replicas=4, maxSurge=1 and maxUnavailable=1, the configured rolling
+policy permits up to five pods in the normal surge calculation and targets at
+least three available under its rollout assumptions. Actual terminating-pod
+accounting, failures and propagation still need platform/version interpretation.
+
+Ask whether nodes, database pools and downstream quotas can handle the surge.
+If every new pod opens another pool, rollout capacity differs from steady state.
+Premature readiness can mark an uninitialized replica available; an overly strict
+dependency probe can remove every endpoint together.
+
+A safe plan combines controller settings with truthful probes, compatible schema/
+messages, drain budgets and observed user outcomes. Setting maxUnavailable to zero
+alone cannot guarantee zero errors through all failure and routing races.
+
 ## Diagnostics and recovery
 
 For rollout 503s inspect events, desired/ready replica counts, Service endpoints,

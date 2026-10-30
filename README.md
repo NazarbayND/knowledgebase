@@ -71,6 +71,10 @@ The remaining phases cover HTTP/ASGI, FastAPI, PostgreSQL, Redis/messaging,
 security/observability, cloud/Kubernetes, architecture and senior interviews.
 They include written code/SQL/design examples and failure analysis, with no new
 service dependencies, deployment artifacts or practical project implementation.
+Use the [assessment guide](docs/python-backend-engineering/assessment-guide.md),
+[glossary](docs/python-backend-engineering/glossary.md) and
+[SQL workbook](docs/python-backend-engineering/phase-5/module-9/query-workbook.md)
+for self-study, answer checks and consistent progress evidence.
 
 ## Add or extend a subject
 

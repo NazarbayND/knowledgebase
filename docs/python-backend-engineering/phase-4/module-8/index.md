@@ -140,6 +140,38 @@ Project safe response data while the required context is valid, and measure the
 actual queries/loading strategy. AsyncSession does not turn every attribute read
 into an automatically awaited database operation.
 
+### Put commit before the successful response, and cleanup on every exit
+
+The SQLAlchemy 2.x synchronous ownership pattern can look like this conceptual
+excerpt; engine and stock/order statements belong to the deferred implementation:
+
+```python
+from sqlalchemy.orm import Session
+
+def apply_order(engine, stock_statement, order_statement):
+    with Session(engine) as session:
+        with session.begin():
+            allocated = session.execute(stock_statement).first()
+            if allocated is None:
+                raise ValueError("stock was not allocated")
+            session.execute(order_statement)
+        # The transaction context has completed successfully here.
+        return {"status": "accepted"}
+```
+
+The transaction context commits on successful exit and rolls back on error; the
+outer context closes the session. The stock statement here must be a guarded
+UPDATE with RETURNING, so no returned row aborts the use case instead of creating
+an order without allocation. The real statements must enforce tenant, quantity
+and concurrency invariants. For async APIs, use the corresponding
+AsyncSession/async context operations rather than sharing a mutable session
+between tasks.
+
+Reporting 200 and only later trying to commit during request cleanup risks a
+client seeing success before the commit fails. Conversely, serialization/network
+failure after a successful commit does not undo it. Preserve an idempotent
+outcome/reconciliation policy for that uncertainty.
+
 ## Configuration and secrets
 
 Read configuration at a clear composition boundary and validate required values

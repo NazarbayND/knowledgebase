@@ -134,6 +134,19 @@ locking for explicit read/change logic with version preconditions when conflicts
 can be detected and surfaced. Neither strategy makes unrelated remote effects
 part of the database transaction.
 
+### Nonnegative stock does not by itself prove no overselling
+
+At Read Committed, two callers can both read available=1, compute a replacement
+of zero in application code, and each write zero without a concurrency precondition.
+If each also records an order, two units were sold while stored stock remains
+nonnegative. CHECK (available >= 0) did not catch the invariant violation.
+
+The stronger rule relates initial supply, allocations and remaining stock.
+A guarded atomic decrement, a lock-and-recheck protocol, a version precondition
+or a suitable Serializable transaction must coordinate competing allocations.
+Combine allocation and order creation in the same transaction and inspect whether
+the conditional allocation actually succeeded. A zero-row update is not success.
+
 ## Deadlocks and retries
 
 Deadlock: transaction A holds product one and waits for two; B holds two and waits
@@ -167,6 +180,22 @@ An email/payment already sent outside the database is not undone by rollback.
 Use durable intent plus a supported idempotency/reconciliation contract.
 A lost connection around commit can mean unknown success, not definitely failure;
 reconcile using a durable operation identity before causing another effect.
+
+### Recognize retryable transaction failures without retrying every error
+
+PostgreSQL reports serialization_failure as SQLSTATE 40001 and deadlock_detected
+as 40P01. A retry policy can roll back the entire failed transaction and rerun its
+use case with fresh state and bounded attempts. Client libraries expose SQLSTATE
+through driver-specific attributes, so do not match localized error-message text.
+
+A permanent invalid input or permission error does not improve through retry.
+A unique violation may be an expected idempotency/business conflict or a transient
+race under a specifically understood algorithm; do not blanket-retry it. Connection
+loss near commit can require outcome reconciliation rather than assuming the
+failed transaction never took effect.
+
+The [PostgreSQL isolation/retry documentation](https://www.postgresql.org/docs/current/transaction-iso.html)
+explains these scopes; retries must also preserve the external-effect contract.
 
 ## Pools and transaction duration
 

@@ -84,6 +84,20 @@ Negative tests must assert unchanged state, not just that an exception was raise
     contract test should survive an internal refactor. Installation and a `src`
     layout expose packaging assumptions; locking controls resolution drift.
 
+## Self-check before the assessment
+
+Two instances of a plain Worker class access jobs = [] defined on the class. One appends a job without assigning an instance field. What does the other see, and how do you create independent state?
+
+??? note "Model answer and a five-point check"
+    Both normally see the same class-owned list. Assignment in `__init__` can create an independent instance list; a dataclass collection field can use `default_factory=list`. Merely annotating the class attribute does not allocate one list per instance. Also distinguish deliberately shared immutable policy from per-request mutable state.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Timebox: **75 minutes refactoring + 15 minutes explanation**.

@@ -17,6 +17,8 @@ free-threaded behavior are studied with explicit version/build boundaries.
 | [Progress & checkpoints](progress.md) | Record work, evidence, and questions for review |
 | [Complete course plan](course-plan.md) | Preserve the ten-phase, twenty-module curriculum and later project roadmap |
 | [Curriculum map](curriculum-map.md) | Find every module's lessons and practice in the original sequence |
+| [Study and assessment guide](assessment-guide.md) | Apply consistent scoring and distinguish written from practical evidence |
+| [Glossary](glossary.md) | Recover key terms and find their detailed lessons |
 
 ## Chapters and projects
 
@@ -40,6 +42,12 @@ intentionally placeholders; no new service, cloud deployment or capstone is clai
 The existing Phase 1–2 runnable examples remain available.
 
 ## Approach
+
+Use the [assessment guide](assessment-guide.md) to plan a study session and score
+an independent answer. Each module's practice page includes a self-check with a
+model answer; the [SQL workbook](phase-5/module-9/query-workbook.md) provides full
+query/result walkthroughs. The [glossary](glossary.md) helps connect similar terms
+without treating them as interchangeable guarantees.
 
 The lessons use worked examples throughout: start with a concept, predict a small
 program/request/query outcome, follow the execution or failure sequence, then

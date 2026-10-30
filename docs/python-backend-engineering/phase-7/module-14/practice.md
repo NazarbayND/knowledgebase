@@ -38,6 +38,20 @@
     Slowing clients can lower demand as latency grows. Retained live references,
     traced allocations and process memory must be compared separately.
 
+## Self-check before the assessment
+
+An SLO permits a bad-event fraction of 0.001. A compatible short window contains 100 bad events out of 10,000 eligible requests. What is burn rate and what does it not tell you by itself?
+
+??? note "Model answer and a five-point check"
+    Observed fraction is 0.01, so burn rate is 10. It is a ratio, not failures per minute. Exact time to exhaustion additionally depends on the remaining long-window budget, request rate/distribution and whether this behavior persists. Do not count fast errors as good latency outcomes or change the eligible definition between windows.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for observability/SLO mechanisms, 30 for coherent instrumentation/probe

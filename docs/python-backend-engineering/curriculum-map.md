@@ -50,6 +50,11 @@ The phase reviews revisit earlier prerequisites instead of replacing them.
 
 ## Depth and evidence
 
+The [study and assessment guide](assessment-guide.md) defines scoring anchors and
+written/practical evidence. Every module practice page has an answer-backed
+self-check. Use the [glossary](glossary.md) for terminology and the
+[SQL workbook](phase-5/module-9/query-workbook.md) for complete relational examples.
+
 - **P0:** independently explain and implement; written study prepares the skill
   but does not substitute for implementation evidence.
 - **P1:** apply mechanisms and justify tradeoffs under realistic constraints.

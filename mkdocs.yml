@@ -43,6 +43,8 @@ nav:
       - python-backend-engineering/index.md
       - Learning path: python-backend-engineering/learning-path.md
       - Curriculum map: python-backend-engineering/curriculum-map.md
+      - Study & assessment guide: python-backend-engineering/assessment-guide.md
+      - Glossary: python-backend-engineering/glossary.md
       - Phase 1 — Fundamentals:
           - python-backend-engineering/phase-1/index.md
           - Module 1 — Language semantics:
@@ -93,6 +95,7 @@ nav:
           - python-backend-engineering/phase-5/index.md
           - "Module 9 — Relational modeling and SQL":
               - python-backend-engineering/phase-5/module-9/index.md
+              - SQL query workbook: python-backend-engineering/phase-5/module-9/query-workbook.md
               - Practice & assessment: python-backend-engineering/phase-5/module-9/practice.md
           - "Module 10 — Transactions, concurrency and scalability":
               - python-backend-engineering/phase-5/module-10/index.md

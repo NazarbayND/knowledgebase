@@ -67,6 +67,38 @@ some code. A repository silently ignoring save is not substitutable even if the
 methods have the same names. Protocol compatibility and behavioral contract tests
 therefore complement one another.
 
+### Special methods — syntax delegates to an object's protocol
+
+```python
+class Batch:
+    def __init__(self, items):
+        self._items = tuple(items)
+
+    def __len__(self):
+        return len(self._items)
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __repr__(self):
+        return f"Batch(items={self._items!r})"
+
+batch = Batch(["a", "b"])
+print(len(batch), list(batch), bool(batch))
+print(batch)
+```
+
+The first line is 2 ['a', 'b'] True; the second is Batch(items=('a', 'b')).
+len uses __len__, iteration uses __iter__, and truthiness falls back to length
+when __bool__ is absent. repr supplies diagnostic representation. Implement
+__eq__ only when you can define meaningful equality and keep hashing consistent.
+
+Also distinguish class attributes from instance fields. A mutable list declared
+on a class is shared through normal class lookup; assigning a fresh list in
+__init__ gives each instance its own list. For dataclass collection fields, use
+field(default_factory=list), then decide whether callers may mutate the result.
+A class annotation alone does not create independent per-request state.
+
 ## Data classes and domain values
 
 Dataclasses generate initialization, representation and equality from declared

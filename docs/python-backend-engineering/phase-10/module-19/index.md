@@ -117,7 +117,81 @@ position must not move start back to 1. The max in the window update protects
 that invariant. Explaining these transitions demonstrates more than recalling
 the labels binary search and sliding window.
 
+### Two pointers — eliminate candidates using sorted order
+
+```python
+def pair_sum(values, target):
+    left, right = 0, len(values) - 1
+    while left < right:
+        total = values[left] + values[right]
+        if total == target:
+            return left, right
+        if total < target:
+            left += 1
+        else:
+            right -= 1
+    return None
+
+print(pair_sum([1, 2, 4, 7], 9))
+print(pair_sum([1, 2, 4], 8))
+```
+
+Expected output is (1, 3), then None. The return values are distinct indices in
+the supplied sorted sequence. Start with 1+7=8: keeping 1 and choosing a smaller
+right value cannot reach 9, so discard that left candidate. Now 2+7=9 succeeds.
+When a sum is too large, discard the right candidate by the symmetric argument.
+
+Each pointer moves inward at most n times: O(n) time and O(1) extra working space.
+Sorting unsorted input first adds cost and changes original positions unless
+indices are carried explicitly. State sorted-input and result-shape requirements
+before applying the pattern. Negative numbers are fine under sorted order.
+
+Python sorting is stable: equal keys retain their input order. That does not
+create a deterministic database/API order when the input itself is unspecified;
+use an explicit tie-breaker where the contract requires one.
+
 ## Trees, graphs, heaps and dynamic programming
+
+### Binary trees — make traversal order and stack ownership visible
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Node:
+    value: int
+    left: "Node | None" = None
+    right: "Node | None" = None
+
+def preorder(root):
+    if root is None:
+        return []
+    pending = [root]
+    result = []
+    while pending:
+        node = pending.pop()
+        result.append(node.value)
+        if node.right is not None:
+            pending.append(node.right)
+        if node.left is not None:
+            pending.append(node.left)
+    return result
+
+tree = Node(2, Node(1), Node(3))
+print(preorder(tree))
+print(preorder(None))
+```
+
+Expected output is [2, 1, 3], then []. Push right before left because the stack
+pops the most recently added node first. Preorder means root, left subtree, right
+subtree; inorder and postorder use different visit positions.
+
+For a proper acyclic tree, traversal is O(n), the working stack is bounded by
+O(h) height, and this returned list also occupies O(n). A recursive variant uses
+call-stack depth O(h); an unbalanced tree can exceed Python's recursion limit.
+A general graph needs a visited/identity policy rather than assuming tree structure.
+
+### Graphs, heaps and state transitions
 
 BFS explores unweighted shortest-path layers; DFS fits reachability, cycle reasoning
 and tree traversal. Track visited state at the right moment to avoid repeated
@@ -241,6 +315,11 @@ The interview is testing whether you preserve the result/consistency contract
 while investigating performance, not simply whether you can name an index.
 
 ## Timed API work and code review
+
+For fully worked SQL rows, use the
+[query workbook](../../phase-5/module-9/query-workbook.md) before discussing indexes
+or a hypothetical execution plan. It includes zero-match joins, tenant scope,
+ties, multiplied totals, cursor boundaries and running frames.
 
 Under a 45-minute API exercise, reserve time for requirements/contracts, a small
 vertical behavior, negative tests and explanation. Clarify storage/identity

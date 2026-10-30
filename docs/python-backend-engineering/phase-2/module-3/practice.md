@@ -73,6 +73,20 @@ Predict `Leaf.__mro__` and `Leaf().trace()`. Then explain why `Left.trace` may c
 6. Why is JSON validation still necessary when a `TypedDict` exists?
 7. What evidence would justify an optimization? When would a generator be worse?
 
+## Self-check before the assessment
+
+A property named stock returns the backing value 3. Someone inserts stock=999 in the instance dictionary. What does normal instance.stock lookup return, and does that make private storage tamper-proof?
+
+??? note "Model answer and a five-point check"
+    Normal lookup still uses the property/data descriptor and returns 3. A data descriptor precedes the instance dictionary. The validation/access policy is not a security barrier: code deliberately editing backing storage or overriding lookup can bypass assumptions. An ordinary function is a non-data descriptor with different precedence.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Timebox: **60 minutes investigation/refactoring + 20 minutes explanation**.

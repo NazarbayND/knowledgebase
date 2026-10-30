@@ -148,6 +148,28 @@ Alert on actionable impact/budget consumption with suitable windows. A CPU
 threshold can be useful context but need not justify paging if user outcomes are
 healthy. Conversely, low CPU does not make exhausted connection pools acceptable.
 
+### Worked burn rate — a ratio needs the same event definition
+
+For a 99.9% event-based objective, the allowed bad fraction is 0.001. In an
+illustrative short window with 10,000 eligible requests and 100 bad outcomes,
+the observed bad fraction is 0.01:
+
+```text
+burn rate = observed bad fraction / allowed bad fraction
+          = 0.01 / 0.001
+          = 10
+```
+
+That is ten times the allowed error fraction, not ten failures per minute.
+The long-window budget and short-window sample must use compatible good/eligible
+definitions. Projecting time to exhaustion also requires assumptions about traffic
+and whether the observed rate persists; do not infer an exact recovery deadline
+from the ratio alone.
+
+Use short/long windows to distinguish acute impact from sustained budget burn.
+For latency objectives, define a good event as a correct eligible response meeting
+the threshold rather than treating fast errors as successful performance.
+
 ## Health probes
 
 Liveness asks whether restart may help a stuck process. Readiness asks whether a

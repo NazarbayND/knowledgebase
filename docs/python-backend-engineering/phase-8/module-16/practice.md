@@ -39,6 +39,20 @@
     initialization, routing and restart. Durable recovery needs replication,
     backups, restoration and promotion procedures beyond process scheduling.
 
+## Self-check before the assessment
+
+Five pods may each run two processes with a pool of ten. The database budget is 80, of which 20 must remain for other work. What is potential demand and a simple per-process cap?
+
+??? note "Model answer and a five-point check"
+    Potential demand is 5 × 2 × 10 = 100. The simplified API allowance is 60, so ten processes imply at most six per process before extra overflow/other consumers. This arithmetic is a capacity ceiling assumption, not evidence six is optimal. Autoscaling and rollout surge must preserve the aggregate budget.
+
+    Award up to two points for the correct outcome, two for the mechanism, and
+    one for a relevant limit or counterexample. Record hints honestly. This is
+    a retrieval drill, not a replacement for the full module assessment.
+
+Use the [assessment guide](../../assessment-guide.md) for the shared scoring
+anchors and evidence rules.
+
 ## Mastery assessment
 
 Use 25 for Kubernetes mechanisms, 30 for coherent rollout/lifecycle contracts,
