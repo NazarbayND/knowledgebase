@@ -1,0 +1,98 @@
+site_name: Engineering Knowledge Library
+site_description: A personal library of courses, technical guides, references, and study notes.
+site_url: https://nazarbaynd.github.io/knowledgebase/
+repo_url: https://github.com/NazarbayND/knowledgebase
+repo_name: NazarbayND/knowledgebase
+edit_uri: edit/main/docs/
+strict: true
+
+theme:
+  name: material
+  language: en
+  font: false
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+# Each subject owns its subtree. Add a sibling entry for a new subject;
+# its internal hierarchy can be a course, articles, references, or a mixture.
+nav:
+  - Library:
+      - index.md
+      - Library guide: library-guide.md
+  - Python Backend Engineering:
+      - python-backend-engineering/index.md
+      - Learning path: python-backend-engineering/learning-path.md
+      - Phase 1 — Fundamentals:
+          - python-backend-engineering/phase-1/index.md
+          - Module 1 — Language semantics:
+              - python-backend-engineering/phase-1/module-1/index.md
+              - Practice & assessment: python-backend-engineering/phase-1/module-1/practice.md
+          - Module 2 — Professional development:
+              - python-backend-engineering/phase-1/module-2/index.md
+              - Practice & assessment: python-backend-engineering/phase-1/module-2/practice.md
+          - Inventory project: python-backend-engineering/phase-1/project.md
+      - Phase 2 — Internals & concurrency:
+          - python-backend-engineering/phase-2/index.md
+          - Module 3 — Data model & runtime:
+              - python-backend-engineering/phase-2/module-3/index.md
+              - Practice & assessment: python-backend-engineering/phase-2/module-3/practice.md
+          - Module 4 — Concurrency:
+              - python-backend-engineering/phase-2/module-4/index.md
+              - Practice & assessment: python-backend-engineering/phase-2/module-4/practice.md
+          - Concurrency project: python-backend-engineering/phase-2/project.md
+      - Progress & checkpoints: python-backend-engineering/progress.md
+      - Complete course plan: python-backend-engineering/course-plan.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    unrecognized_links: warn
+    absolute_links: warn
+    anchors: warn
