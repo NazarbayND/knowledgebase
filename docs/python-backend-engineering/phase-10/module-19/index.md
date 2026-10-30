@@ -32,6 +32,28 @@ For arrays/strings, clarify mutation, ordering, duplicates, Unicode units and em
 input. Python strings expose Unicode code points, not arbitrary user-perceived
 grapheme clusters. A “character” requirement may need clarification.
 
+### Example — explain the data structure through the work it avoids
+
+Removing the first element of a list shifts its remaining elements. Doing that
+repeatedly for n queued nodes can make otherwise simple traversal quadratic.
+deque.popleft avoids that shifting for a FIFO queue.
+
+For top-k counts, define ties before selecting:
+
+```python
+from collections import Counter
+from heapq import nsmallest
+
+counts = Counter(["a", "b", "a", "c", "b", "a"])
+top = nsmallest(2, counts.items(), key=lambda item: (-item[1], item[0]))
+print(top)
+```
+
+Expected output is [('a', 3), ('b', 2)]. The key prefers larger counts, then
+alphabetical order. Counting needs O(n) average work; bounded selection can avoid
+sorting all distinct values when k is small. State both input length and distinct
+key count, and include retained count/output memory in the explanation.
+
 ## Search, sorting and windows
 
 Binary search requires a monotonic/sorted predicate and a shrinking interval.
@@ -75,6 +97,26 @@ once. Explain why `max` matters for an old repeated value outside the current
 window. Sorting, windows and two pointers solve different constraints; do not force
 a window onto a problem without the necessary condition.
 
+### Example — trace the binary-search invariant before giving complexity
+
+For values [1, 2, 2, 4] and target 2, the existing lower_bound uses a half-open
+[left, right) interval:
+
+| Step | left | right | middle/value | Decision |
+| --- | ---: | ---: | --- | --- |
+| 1 | 0 | 4 | 2 / 2 | right becomes 2 |
+| 2 | 0 | 2 | 1 / 2 | right becomes 1 |
+| 3 | 0 | 1 | 0 / 1 | left becomes 1 |
+
+The interval is empty at 1, the first valid position. Using middle rather than
+middle + 1 in the less-than branch can fail to make progress. Returning the
+first equality encountered can return the second duplicate instead of the first.
+
+For longest_distinct("abba"), the second b moves start to 2. The final a's earlier
+position must not move start back to 1. The max in the window update protects
+that invariant. Explaining these transitions demonstrates more than recalling
+the labels binary search and sliding window.
+
 ## Trees, graphs, heaps and dynamic programming
 
 BFS explores unweighted shortest-path layers; DFS fits reachability, cycle reasoning
@@ -111,6 +153,33 @@ amount; unreachable states need an explicit sentinel. Check whether greedy is
 actually valid before substituting it. Memoized recursion and bottom-up arrays
 trade clarity, stack and state memory; basic mastery matters before exotic optimizations.
 
+### Example — a greedy shortcut needs proof, while DP states the alternatives
+
+```python
+def minimum_coins(amount, coins):
+    if amount < 0 or any(coin <= 0 for coin in coins):
+        raise ValueError("invalid amount or coin")
+    unreachable = amount + 1
+    best = [0] + [unreachable] * amount
+    for value in range(1, amount + 1):
+        for coin in coins:
+            if coin <= value:
+                best[value] = min(best[value], best[value - coin] + 1)
+    return None if best[amount] == unreachable else best[amount]
+
+print(minimum_coins(6, [1, 3, 4]))
+print(minimum_coins(3, [2]))
+```
+
+Expected output is 2, then None. Greedy chooses 4+1+1 for the first case, while
+3+3 needs two coins. The state best[value] considers every permitted final coin;
+zero is the base case and unreachable is distinct from a valid count.
+
+Time depends on amount × number of denominations; the array uses O(amount) space.
+For graphs, similarly state why BFS marks discovery before repeated enqueues and
+why its shortest-path guarantee needs unweighted edges. A heap needs a tie-breaker
+when equal priorities would otherwise compare unorderable payloads.
+
 ## Python-specific reasoning
 
 Expect reference/mutable-default/closure questions, iterator exhaustion, equality
@@ -122,6 +191,24 @@ as cumulative checks.
 When asked for a decorator/context manager/Protocol, preserve signatures, return
 and exception behavior, and ownership. Do not implement a global mutable singleton
 to save a minute if isolation is part of the task. Show a minimal negative case.
+
+### Example — a validation pass can consume the business input
+
+```python
+records = iter([1, 2, 3])
+print(all(value > 0 for value in records))
+print(sum(records))
+```
+
+Expected output is True, then 0. all consumed the entire one-shot iterator while
+checking positivity, so sum has no remaining values. If validation stopped early,
+the remaining input would differ again.
+
+Choose a materialized small collection, a fresh-iterator factory or a single-pass
+validation/transformation contract. Do not fix the result by accidentally accepting
+a partial dataset. Similar interview traps include mutable defaults, closure late
+binding, shallow freezing, identity vs equality and exception cleanup that suppresses
+errors. Explain the mechanism and a backend consequence, not just the output.
 
 ## SQL and backend challenges
 
@@ -138,6 +225,21 @@ For a duplicate-order task, preserve the durable idempotency/business transactio
 boundary, not a process-local set. For slow query review, do not invent EXPLAIN
 results. State the expected evidence and how you would verify it.
 
+### Example — start a SQL challenge with grain and ties
+
+If the prompt asks for the top two customers per tenant, clarify whether ties
+may produce more than two rows. ROW_NUMBER imposes a distinct position; RANK or
+DENSE_RANK encode different tie behavior. Then state whether spend is per order,
+per item or already aggregated before joining other one-to-many tables.
+
+For a query-optimization task, propose the filter/order access pattern and ask
+for actual plans/data distribution. Do not fabricate a measured speedup.
+For backend debugging, distinguish pool wait, slow SQL, event-loop blocking and
+transaction conflicts with observations that can separate them.
+
+The interview is testing whether you preserve the result/consistency contract
+while investigating performance, not simply whether you can name an index.
+
 ## Timed API work and code review
 
 Under a 45-minute API exercise, reserve time for requirements/contracts, a small
@@ -149,6 +251,22 @@ Code review begins with correctness/security/ownership before naming/style. Iden
 one reproducible defect, add a meaningful case, fix it locally and explain the
 remaining risk. Keep refactors proportional and preserve public behavior unless
 the task authorizes a contract change.
+
+### Example — spend the timebox on evidence, not scaffolding
+
+For a 45-minute create-order exercise, allocate time to clarify identity/storage
+assumptions, implement or outline one small behavior, cover negative inputs and
+explain transaction/idempotency limits. A large router tree with no tested invariant
+is weak evidence.
+
+A useful review sequence is: identify one concrete failure, write a reproducing
+case, change the smallest relevant boundary, then explain what remains unverified.
+If the task uses an in-memory store, say that it cannot prove multi-worker
+PostgreSQL behavior.
+
+Keep domain correctness, authorization and resource ownership ahead of naming
+preferences. A clean formatter result does not establish a correct algorithm,
+and a correctly typed quantity can still violate available stock.
 
 ## Worked problem-solving narrative
 

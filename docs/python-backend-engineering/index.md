@@ -41,6 +41,12 @@ The existing Phase 1–2 runnable examples remain available.
 
 ## Approach
 
+The lessons use worked examples throughout: start with a concept, predict a small
+program/request/query outcome, follow the execution or failure sequence, then
+connect the result to backend decisions and common mistakes. Exact outputs are
+shown where the behavior is deterministic; timing/capacity scenarios are labelled
+as illustrative rather than measured results.
+
 For each concept, explain the behavior, write a small example, and test an edge
 case. For practical work, document how to run it and how to tell whether it works.
 When a design has alternatives, record the tradeoff that led to your choice.

@@ -48,6 +48,30 @@ Do not mechanically translate JavaScript truthiness: empty arrays/objects are
 truthy in JavaScript but false in Python; the string `"0"` is true in both. Use
 `is None` for missing values instead of conflating absence with zero or emptiness.
 
+### Example — an explicit zero is different from no setting
+
+```python
+def wrong_timeout(value):
+    return value or 30
+
+def configured_timeout(value):
+    return 30 if value is None else value
+
+print(wrong_timeout(0))
+print(configured_timeout(0))
+print(configured_timeout(None))
+```
+
+Expected output is 30, 0, then 30. The first function asks whether the value is
+truthy, so zero selects the fallback. The second asks whether the caller supplied
+the absence marker. The right behavior depends on the setting's contract.
+
+and/or return selected operands, not necessarily booleans. This is useful for
+defaults but dangerous when zero, False or an empty collection is meaningful.
+A backend page limit, feature switch or retry count needs a deliberate rule;
+validation should reject forbidden zeroes explicitly rather than replace them by
+accident. Unlike JavaScript, an empty Python list or dict is false.
+
 ## Identity and copying
 
 Assignment copies a reference, not an object. `==` invokes value comparison;
@@ -75,6 +99,26 @@ Prefer explicit domain copies or immutable values to defensive deep-copying enti
 graphs. A tuple is immutable, but a list inside that tuple can still mutate.
 The inventory project uses frozen products with primitive fields so returning a
 product cannot mutate repository stock through an alias.
+
+### Example — copying only the outside leaves the inside shared
+
+```python
+original = {"tags": ["backend"]}
+copied = original.copy()
+copied["tags"].append("python")
+print(original is copied)
+print(original["tags"] is copied["tags"])
+print(original["tags"])
+```
+
+Expected output is False, True, then ['backend', 'python']. There are two outer
+dictionaries and one inner list. copy() duplicates the mapping's references,
+not every referenced object.
+
+For nested state, rebuild the changed branch, choose immutable child values, or
+use deep copying where its object semantics are appropriate. Do not assume a
+frozen outer dataclass makes a nested list immutable. In a response cache this
+mistake can let one request modify the value later served to another.
 
 ## Built-in values and collections
 
@@ -107,6 +151,30 @@ Choose based on operations: `deque` for FIFO work, set for membership, dict for
 keyed lookup. Hash/equality must remain consistent; mutable objects are usually
 poor keys. Do not mutate a dict's size while iterating over it.
 
+### Example — choose the container from the operation
+
+```python
+from collections import deque
+
+pending = deque(["a", "b"])
+pending.append("c")
+print(pending.popleft())
+print(list(pending))
+
+keys = {True: "flag", 1: "quantity"}
+print(len(keys), keys[True])
+```
+
+Expected output is a, then ['b', 'c'], then 1 quantity. deque removes from the
+front without shifting every remaining list element. The dictionary example has
+one key because True and 1 compare equal with compatible hashes.
+
+Lists suit indexed sequences; sets suit membership; dicts suit keyed lookup.
+Tuple fields can themselves reference mutable values, and only hashable elements
+make a tuple usable as a key. str is Unicode text; bytes is encoded data and
+indexing bytes produces an integer. For money, choose Decimal or minor units with
+rounding/currency rules instead of assuming binary floats exactly represent cents.
+
 ## Function parameters
 
 Functions create local bindings to passed objects. Rebinding a parameter does not
@@ -135,6 +203,37 @@ The example copies a caller-owned list deliberately. A function that promises
 in-place mutation should document that different ownership contract. Avoid using
 `items or []` when callers may intentionally pass an empty container to mutate.
 
+### Example — defaults are created when def executes
+
+```python
+def add_bad(value, history=[]):
+    history.append(value)
+    return history
+
+first = add_bad("created")
+second = add_bad("reserved")
+print(first)
+print(first is second)
+
+def add_good(value, history=None):
+    result = [] if history is None else list(history)
+    result.append(value)
+    return result
+
+print(add_good("created"))
+print(add_good("reserved"))
+```
+
+Expected output is ['created', 'reserved'], True, ['created'], then ['reserved'].
+Both bad calls use the same definition-time list, and first still references it
+when the second call mutates it. The good version creates independent output and
+also copies explicitly supplied history.
+
+That copy is an ownership choice: a deliberately in-place API would instead
+document mutation. Keyword-only parameters such as quantity make call meaning
+clear; *args/**kwargs are useful for forwarding, but can hide unsupported business
+arguments if used without a clear contract.
+
 ## Scope and closures
 
 LEGB means local, enclosing function, global module, builtins. Assignment normally
@@ -158,6 +257,25 @@ model. A decorator replaces a function at definition time: `@trace` means
 `function = trace(function)`. Use `functools.wraps` for metadata and keep the
 wrapper's return/exception behavior. Async wrappers must `await` the wrapped call;
 returning a coroutine accidentally is a different contract.
+
+### Example — a closure reads a binding when called
+
+```python
+late = [lambda: i for i in range(3)]
+bound = [lambda i=i: i for i in range(3)]
+print([function() for function in late])
+print([function() for function in bound])
+```
+
+Expected output is [2, 2, 2], then [0, 1, 2]. The first functions share the loop
+binding and read its final value. The second evaluate each default during that
+function's creation.
+
+LEGB explains where names are found, but assignment also affects scope. A function
+assigning a name normally treats it as local throughout its body, so reading it
+first can raise UnboundLocalError. nonlocal changes rebinding of an enclosing
+name; it does not copy closure state. This matters for callbacks, decorators and
+request factories that accidentally capture shared mutable configuration.
 
 ## Iteration and laziness
 
@@ -187,6 +305,32 @@ scope. If callers need repeated traversal, return a collection or a factory for
 fresh iterators. `yield from` delegates iteration; do not raise `StopIteration`
 manually inside a generator to signal normal completion—use `return`.
 
+### Example — laziness delays both work and errors
+
+```python
+def quantities():
+    print("read first")
+    yield 3
+    print("read second")
+    yield 2
+
+values = quantities()
+print("created")
+print(next(values))
+print(list(values))
+print(list(values))
+```
+
+Expected output is created, read first, 3, read second, [2], then [].
+Calling the generator function creates an iterator without running the body.
+Each advance resumes it until yield/return/error. Exhaustion is persistent;
+calling list again does not rewind it.
+
+A generator can save retained intermediates, but errors now occur during
+consumption and suspended locals can keep resources alive. Consume inside the
+owner's context or materialize a small result deliberately. An iterable can
+produce an iterator; an iterator generally represents one traversal.
+
 ## Exceptions
 
 Exceptions propagate until a matching handler is found. Define a small domain
@@ -215,6 +359,34 @@ every defect into an empty result. `Exception` excludes `BaseException` subclass
 such as `KeyboardInterrupt`, `SystemExit`, and `asyncio.CancelledError`; cleanup
 should run while those signals still propagate.
 
+### Example — preserve the cause and understand else/finally
+
+```python
+def parse_quantity(raw):
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError("invalid quantity") from exc
+    else:
+        return value
+    finally:
+        print("finished parsing")
+
+try:
+    parse_quantity("bad")
+except ValueError as error:
+    print(str(error))
+    print(type(error.__cause__).__name__)
+```
+
+Expected output is finished parsing, invalid quantity, then ValueError.
+The parsing operation failed, else did not run, and finally ran before the new
+error reached the caller. Chaining retains the underlying cause for diagnosis.
+
+Catch the smallest expected failure. Catching everything and returning zero
+would make invalid input look like a legitimate business value. Returning from
+finally can suppress an error; cleanup should normally preserve the outcome.
+
 ## Context managers
 
 `with` expresses scoped acquisition/release through `__enter__` and `__exit__`.
@@ -242,6 +414,38 @@ transferred. Do not return a lazy reader from inside an already-exited `with`.
 `ExitStack` helps with a dynamic number of resources. Async resources use `async
 with` and awaitable enter/exit methods. Garbage collection timing is not a reliable
 resource-lifecycle strategy across Python implementations.
+
+### Example — cleanup still runs when the consumer fails
+
+```python
+from contextlib import contextmanager
+
+@contextmanager
+def owned(events):
+    events.append("acquire")
+    try:
+        yield "resource"
+    finally:
+        events.append("release")
+
+events = []
+try:
+    with owned(events) as resource:
+        events.append(resource)
+        raise RuntimeError("consumer failed")
+except RuntimeError:
+    events.append("caught")
+print(events)
+```
+
+Expected output is ['acquire', 'resource', 'release', 'caught']. The generator
+pauses at yield while the body runs; an exceptional exit resumes cleanup before
+the outer handler receives the error. A class-based manager expresses this with
+__enter__/__exit__, where returning a truthy value can suppress the exception.
+
+Apply the same ownership rule to files, locks and clients. Returning an iterator
+over a file that has already left its with scope violates it. Garbage collection
+is not a substitute for deterministic release.
 
 ## Practical standard library
 
@@ -272,6 +476,29 @@ def summarize(path: Path) -> str:
 Regex is not a parser for arbitrary nested structures. JSON/CSV files may be large
 or malformed; decide size limits and error boundaries before processing untrusted
 inputs. A naive local `datetime` is not an unambiguous global timestamp.
+
+### Example — a timestamp is a contract, not just a string
+
+```python
+import json
+from datetime import UTC, datetime
+from pathlib import PurePosixPath
+
+at = datetime(2026, 1, 2, 12, tzinfo=UTC)
+path = PurePosixPath("reports") / "inventory.json"
+print(str(path))
+print(json.dumps({"generated_at": at.isoformat(), "units": 5}))
+```
+
+Expected output is reports/inventory.json and a JSON object whose timestamp is
+2026-01-02T12:00:00+00:00. Datetime was converted explicitly because default JSON
+encoding does not serialize arbitrary Python objects.
+
+pathlib expresses path operations; csv handles quoting that split(",") misses.
+Counter aggregates keys, islice limits consumption, groupby groups consecutive
+keys, partial binds arguments, and fullmatch validates a whole string. Each tool
+has a semantic boundary. In a report pipeline, define encoding, timezone, invalid
+row handling and whether partial consumption is allowed before choosing utilities.
 
 ## Engineering decisions and common mistakes
 

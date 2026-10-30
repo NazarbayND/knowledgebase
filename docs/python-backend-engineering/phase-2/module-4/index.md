@@ -54,6 +54,36 @@ Unlike an automatically launched JavaScript promise-producing operation, merely
 creating a Python coroutine object does not drive it. Unawaited coroutines can
 produce warnings and silently omit intended work.
 
+### Example — overlap waiting without adding Python execution lanes
+
+```python
+import asyncio
+
+async def fetch(label):
+    print("start", label)
+    await asyncio.sleep(0)
+    print("finish", label)
+    return label
+
+async def main():
+    async with asyncio.TaskGroup() as group:
+        first = group.create_task(fetch("A"))
+        second = group.create_task(fetch("B"))
+    print(sorted([first.result(), second.result()]))
+
+asyncio.run(main())
+```
+
+Both calls start, suspend and finish, and the last line is ['A', 'B']. Exact
+interleaving is a scheduler detail; the invariant is that both results exist when
+the group exits successfully. sleep(0) is a teaching suspension, not network I/O.
+
+A process normally has separate memory and an interpreter; threads share process
+memory and use OS scheduling; coroutines share a loop and cooperate at suspension
+points. Asyncio overlaps waits rather than executing two Python bodies at once
+on the same loop thread. If each body instead computes for a second without
+suspending, adding tasks does not turn two seconds of computation into one.
+
 ## The GIL and free-threading
 
 In a standard GIL-enabled CPython build, one thread at a time executes Python
@@ -81,6 +111,25 @@ The course's reference validation uses ordinary CPython 3.14, not a free-threade
 build. Free-threaded benchmarking is optional P2 work; do not generalize its results
 to a different interpreter or extension stack.
 
+### Example — explain why threads help one workload but not another
+
+Consider two tasks that each spend 10 ms in Python and 200 ms waiting on a remote
+service. Sequential execution is roughly 420 ms. Threads can overlap much of the
+waiting because blocking I/O can release the GIL. Async-capable clients can overlap
+it without dedicating a thread to each request. These are illustrative durations,
+not a speed guarantee.
+
+Now consider two pure-Python calculations each requiring 200 ms of CPU. Ordinary
+GIL-enabled threads compete for execution in one interpreter, so a second core
+does not automatically halve elapsed time. A process pool can use separate cores,
+but startup, transfer, scheduling and memory may outweigh gains for small jobs.
+Native libraries may release the GIL and need different measurement.
+
+The GIL protects interpreter machinery; it does not promise your read/check/write
+business sequence is atomic. Free-threaded builds change parallelism possibilities,
+not the need for synchronization. Inspect the actual build, active GIL state,
+extensions and workload before using a benchmark to choose an execution model.
+
 ## Workload selection
 
 | Workload | Starting choice | Why and tradeoff |
@@ -95,6 +144,32 @@ First ask whether the bottleneck is CPU, remote latency, disk, a database lock,
 or a saturated connection pool. Asyncio improves overlap of waits, not the CPU cost
 of a calculation. Adding workers to a saturated database can worsen latency.
 For tiny jobs, serialization and process startup can outweigh parallel gains.
+
+### Example — an endpoint's waiting time reveals the useful optimization
+
+Imagine this sequential request path:
+
+| Step | Illustrative elapsed time |
+| --- | ---: |
+| Validate input | 2 ms |
+| Query PostgreSQL | 100 ms |
+| Call vendor | 200 ms |
+| Compute domain result | 3 ms |
+| Serialize | 2 ms |
+
+The total is 307 ms if these intervals do not overlap. Most time is waiting.
+Async I/O can let other requests progress while this one waits; it does not make
+PostgreSQL execute its query in 2 ms.
+
+If the vendor request depends on the database result, those two operations cannot
+simply run together. If independent, structured concurrent tasks may overlap their
+waits. Check the dependency graph before promising lower single-request latency.
+
+An existing blocking SDK can use bounded threads. A large pure-Python transform
+may need a process or durable worker. Increasing all concurrency limits can
+overload a finite database, making throughput worse and queues longer. Identify
+the constraint and the desired metric: one request's duration, aggregate throughput,
+tail latency and correctness are related but distinct goals.
 
 ## Event-loop scheduling
 
@@ -119,6 +194,44 @@ This illustration assumes imports and a shared async client. Two sequential
 `await client.get(...)` calls are sequential requests; the keyword alone does not
 create overlap. Never run `asyncio.run()` inside an already-running loop; expose
 an async function for that caller to await.
+
+### Example — a coroutine object is not a running operation
+
+```python
+import asyncio
+
+async def fetch():
+    print("body")
+    await asyncio.sleep(0)
+    return "done"
+
+async def main():
+    operation = fetch()
+    print("created")
+    result = await operation
+    print(result)
+
+asyncio.run(main())
+```
+
+Expected output:
+
+```text
+created
+body
+done
+```
+
+Calling fetch creates a coroutine object. Its body starts when main awaits it.
+create_task instead schedules the coroutine on the running loop, and the returned
+Task owns completion/result/cancellation state. A Future represents a later result,
+often used by lower-level I/O integration. All these are awaitable, but not identical.
+
+For three independent 100 ms waits, sequential awaits take roughly 300 ms;
+scheduled overlapping waits can take roughly 100 ms plus overhead. Those numbers
+are a model, not a performance assertion. Awaiting an already-finished operation
+may not suspend at all, so count actual waiting opportunities rather than the
+number of await keywords in a function.
 
 ## Structured tasks and cancellation
 
@@ -152,6 +265,52 @@ of waiting tasks. A fixed worker set plus a bounded queue limits pending work to
 Use expected endpoint failures as explicit results only when the batch contract
 allows partial success; let programming errors fail the TaskGroup.
 
+### Example — failure stops siblings and cleanup precedes the parent's handler
+
+```python
+import asyncio
+
+async def main():
+    events = []
+    started = asyncio.Event()
+
+    async def waiting():
+        events.append("started")
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            events.append("cleaned")
+
+    async def failing():
+        await started.wait()
+        raise ValueError("deliberate failure")
+
+    try:
+        async with asyncio.TaskGroup() as group:
+            group.create_task(waiting())
+            group.create_task(failing())
+    except* ValueError:
+        events.append("caught")
+    print(events)
+
+asyncio.run(main())
+```
+
+Expected output is ['started', 'cleaned', 'caught']. The event ensures the sibling
+started before failure. TaskGroup requests sibling cancellation and waits for its
+finally block before control reaches the parent handler.
+
+Default gather behaves differently on a child's ordinary exception: it propagates
+the exception without automatically cancelling every sibling. The caller must
+still own unfinished tasks. Runner shutdown can later cancel them, which must
+not be mistaken for gather's failure semantics.
+
+Timeouts also use cancellation under a defined scope. Catch TimeoutError outside
+asyncio.timeout, and preserve unrelated caller cancellation. A CPU loop that
+never yields cannot be interrupted promptly by a cooperative deadline. Cancelling
+an await on running thread work does not kill that thread.
+
 ## Executors and blocking libraries
 
 `asyncio.to_thread()` is convenient for blocking I/O. `ThreadPoolExecutor` gives
@@ -182,6 +341,39 @@ The lab verifies equal results and reports elapsed times for a bounded CPU job.
 It makes no promise the process pool is faster for this small input; vary task size
 to explain the crossover while keeping total resource use bounded.
 
+### Example — choose the offload boundary, not just a new keyword
+
+```python
+import asyncio
+import time
+
+def blocking_sdk(value):
+    time.sleep(0.01)
+    return value * 2
+
+async def main():
+    result = await asyncio.to_thread(blocking_sdk, 3)
+    print(result)
+
+asyncio.run(main())
+```
+
+The final line prints 6. blocking_sdk executes in a worker thread while the loop
+can schedule other work. Calling blocking_sdk(3) directly inside main would block
+the loop despite main being async. to_thread takes the function and its arguments,
+not the already-computed result.
+
+Thread pools suit blocking I/O with explicit capacity/timeouts. Process pools
+isolate memory and can parallelize pure-Python CPU work; callable importability,
+picklable arguments/results and guarded startup matter. Passing a huge object may
+make serialization dominate the calculation.
+
+Python 3.14 also provides InterpreterPoolExecutor in supported CPython builds.
+Each worker has isolated interpreter state and a separate GIL, with compatibility
+and transfer constraints. Treat it as a P2 alternative after mastering processes,
+threads and asyncio; it does not make mutable application objects freely shared
+between interpreters.
+
 ## Diagnosing loop blocking
 
 `time.sleep`, synchronous HTTP clients, long JSON processing, CPU loops and blocking
@@ -209,6 +401,27 @@ and CPU profiling to identify the responsible call. For async I/O choose the asy
 client; for blocking I/O use bounded threads; for pure Python CPU work consider
 processes. Offloading CPU work to threads on a GIL-enabled interpreter may still
 cause contention. No fixed speed ratio is a correctness assertion.
+
+### Example — one blocking handler delays unrelated work
+
+Imagine a single worker receives a five-second blocking operation and a quick
+health request immediately afterward. If the first handler calls time.sleep(5)
+on the loop thread, the second request's Python code cannot run there until that
+thread becomes available. The health handler can be trivial and still look slow.
+
+Replacing a simulated wait with await asyncio.sleep allows scheduling progress.
+For a real blocking SDK, use a supported async implementation or bounded offload.
+For CPU work, a sleep substitution is not a fix: move or reduce the computation.
+
+FastAPI can offload a normal def path operation through its framework thread
+pool. A synchronous helper directly called by an async def path operation is not
+automatically offloaded. The execution boundary, not the function's file or name,
+determines where it runs.
+
+Diagnose with loop lag, slow callback evidence, CPU and dependency traces.
+A healthy downstream plus high loop lag suggests local blocking/CPU work.
+Low loop lag plus large pool wait suggests another bottleneck. The existing
+heartbeat lab demonstrates the distinction without claiming fixed speed ratios.
 
 ## Races and synchronization
 
@@ -239,6 +452,30 @@ or threads. The GIL is not a transaction mechanism. Prefer immutable messages an
 one owner for mutable state; use a database's transactional tools for multi-worker
 inventory correctness in later phases.
 
+### Example — show the lost update as a timeline
+
+| Step | Task A | Task B | Shared count |
+| --- | --- | --- | ---: |
+| 1 | Read 0 | — | 0 |
+| 2 | Suspend | Read 0 | 0 |
+| 3 | Write 1 | Suspend | 1 |
+| 4 | — | Write 1 | 1 |
+
+Both tasks completed, but there was only one effective increment. One loop thread
+can have races because the logical operation spans a suspension. This does not
+require simultaneous machine instructions.
+
+An asyncio.Lock around the whole read/await/write region coordinates tasks using
+that same lock on the same loop. A second API worker has another process and
+another lock; it can still race on shared database state. Use a matching database
+transaction/constraint/guarded update for that resource.
+
+Keep critical sections small and use a consistent lock order. Holding a lock
+while waiting for another task that needs it can deadlock. In the existing
+async_patterns lab a barrier makes every unsafe reader observe zero before
+writing, so the lost update is reproduced deterministically rather than by hoping
+a short sleep yields a particular schedule.
+
 ## Pools, limits and backpressure
 
 A connection pool reuses connections and caps socket usage. Match application
@@ -265,6 +502,28 @@ A streaming production design would also bound payload bytes, output buffering,
 batch duration and input admission. Retrying can multiply load; retries, URL trust,
 rate limits and response-size policies need explicit contracts rather than hidden
 defaults. Parent cancellation cancels and awaits workers before the client closes.
+
+### Example — account for every buffer and every owner
+
+Suppose there are 100 jobs, five workers, a queue capacity of ten and an HTTP pool
+of five. At most five workers perform calls and at most ten items wait in that
+queue. The producer waits when it tries to enqueue more. That is backpressure.
+
+But a list containing all 100 inputs and all completed response bodies still
+occupies memory. A bounded queue does not bound arbitrary retained results.
+A semaphore around a million already-created tasks limits entry to a region,
+not the million task objects themselves.
+
+If there are four API processes each with that pool, potential connections become
+twenty. With three replicas they become sixty. Compare the aggregate with the
+downstream's real capacity and other clients, not just one process's setting.
+
+Own resources in nested scopes: the application/request owns the client, a task
+group owns children, and each worker owns its dequeued item. Await worker cleanup
+before closing resources they use. Work that must survive process restart needs
+durable acceptance/queue semantics; an unowned create_task call is not that
+guarantee. Semaphore, pool, queue, rate limiter and deadline each bound different
+dimensions, so describe their combined contract explicitly.
 
 ## Engineering decisions and common mistakes
 

@@ -35,6 +35,22 @@ contracts. Global order can restrict throughput. Choose based on workload, recov
 operations and cost, not product popularity. Broker “exactly once” features have
 defined scopes and do not magically cover an external email/payment side effect.
 
+### Example — three consumers do not necessarily mean three copies of work
+
+A work queue usually distributes jobs among competing consumers. A retained log
+lets consumer groups track partition progress; separate groups can read the same
+history independently. Pub/Sub describes fan-out, but retention/recovery depend
+on the actual implementation.
+
+For orders, state whether messages are commands to one owner or facts several
+capabilities consume. Pick a partition/routing key that preserves the ordering
+actually required. Kafka ordering is scoped to a partition; global order can
+limit parallelism. SQS Standard and FIFO expose different contracts, and a FIFO
+label still does not atomically cover your arbitrary external side effect.
+
+Broker choice follows durability, replay, latency, routing and operating needs.
+A successful publish demonstration cannot establish crash recovery.
+
 ## Workers and delivery semantics
 
 Celery or another worker framework handles task dispatch/execution, but acknowledgement,
@@ -47,6 +63,22 @@ At-most-once avoids redelivery at the cost of possible loss; at-least-once accep
 redelivery and requires safe effects. Prefetch and worker concurrency bound in-flight
 work. Unbounded or overly large reservations can make recovery slow and unfair.
 Define poison-message handling and graceful worker shutdown.
+
+### Example — acknowledgement timing chooses a failure mode
+
+```text
+Ack first → process crashes → broker considers work finished → possible lost effect
+Commit first → process crashes before ack → broker redelivers → possible duplicate
+```
+
+At-least-once designs accept the second case and make effects safe to repeat.
+At-most-once avoids redelivery while accepting possible loss. The correct choice
+is a business contract, not simply a way to reduce duplicate logs.
+
+Visibility timeout expiry can make a still-running SQS job available again.
+Prefetch and worker concurrency determine how much work one consumer holds.
+Choose bounded in-flight capacity and shutdown behavior: stop claiming work,
+finish/cancel owned jobs and acknowledge only at the defined durable boundary.
 
 ## Idempotent consumers
 
@@ -71,6 +103,21 @@ remote effect. Use the provider's idempotency/reconciliation contract or a durab
 state machine. Marking processed before a call risks loss; after it risks duplicates.
 State this gap instead of claiming end-to-end exactly once.
 
+### Example — a processed flag and business effect must agree atomically
+
+Suppose the worker inserts event 42 into processed_events and commits, then
+crashes before changing the order. Redelivery sees "processed" and skips the
+missing business effect. Reversing two independent commits risks repeating it.
+
+For database-local effects, the dedup identity and effect need one transaction,
+with uniqueness enforcing concurrent duplicate claims. A check-then-insert without
+a constraint lets two consumers both observe absence.
+
+For an external email, a local transaction cannot atomically commit the provider's
+send. Marking done before it risks loss; afterward risks duplicates on an unknown
+outcome. Use a provider-supported idempotency/status/reconciliation contract or
+make the workflow's uncertainty explicit.
+
 ## Retries and dead letters
 
 Classify transient vs permanent errors. Apply bounded exponential backoff, jitter,
@@ -82,6 +129,22 @@ A dead-letter queue retains work needing diagnosis/action. Include safe metadata
 error classification and attempt history; define ownership, alerting, retention,
 redrive conditions and duplicate behavior. It is not a place to hide silently lost
 business requests. A poison schema error will not improve after infinite retries.
+
+### Example — retries can multiply instead of repair overload
+
+If three layers each permit three total attempts, one top-level operation can
+produce up to 27 attempts at the deepest dependency. Backoff without budgets
+does not eliminate that multiplication.
+
+Classify errors: an unavailable provider may recover; an incompatible message
+schema will not improve after infinite retries. Choose the retry owner, total
+deadline/attempt budget, jitter and capacity limits. A retry must preserve stable
+business/event identity.
+
+A DLQ needs an owner, alerting, safe diagnostic metadata and a controlled redrive
+policy. Replaying repaired work can still duplicate already-applied effects, so
+idempotency remains relevant. A queue where failed orders silently accumulate is
+not a completed recovery mechanism.
 
 ## Transactional outbox
 
@@ -111,6 +174,24 @@ ordering, batching and retention need design. Outbox fixes the database/publish
 intent gap under its assumptions; it does not remove duplicate delivery or guarantee
 global order across independent aggregates.
 
+### Example — the outbox closes one gap and leaves a deliberate duplicate path
+
+```text
+Transaction: commit order o-9 and event e-42 together
+Relay: publish e-42; broker accepts
+Relay: crashes before recording delivered
+Relay: publishes e-42 again after restart
+```
+
+The order's event intent was not lost, but publication repeated. Consumers must
+still process stable event identities safely. Marking delivered before confirmed
+acceptance would trade that duplicate possibility for potential loss.
+
+A relay also needs claiming, batching, ordering and retention policies. Polling
+and change-data capture have different operating costs. Outbox does not create
+global order across unrelated aggregates or exactly-once remote effects; it gives
+durable intent atomic with the database change under its stated assumptions.
+
 ## Sagas and compensation
 
 A saga coordinates local transactions across capabilities with durable progress
@@ -122,6 +203,21 @@ Orchestration centralizes workflow state; choreography distributes reactions and
 can make dependencies harder to see. Prefer one local transaction when one database
 and bounded use case already suffice. Advanced sagas are selected P2 implementation
 work; understanding the partial-failure model comes first.
+
+### Example — compensation is a new action, not rollback through time
+
+A workflow reserves stock, charges payment and schedules shipment. If shipment
+cannot proceed, compensation may release stock and refund payment. The refund
+can fail or have fees; an already sent confirmation cannot be unsent.
+
+Persist workflow state, stable step identities and retry/compensation outcomes.
+Decide who repairs a workflow that exhausts automated recovery. Orchestration
+centralizes this progress; choreography distributes reactions but can hide the
+overall dependency chain.
+
+If one database transaction already spans the necessary invariant, a saga adds
+complexity without a useful boundary. Introduce distributed workflow machinery
+because ownership/transaction constraints demand it, not because background jobs exist.
 
 ## Resilience and CAP
 
@@ -135,6 +231,22 @@ formal availability property during a network partition. It is not a three-item
 shopping list or proof one product is always “AP.” State the operation, partition
 and consistency requirement. Normal-operation latency/consistency tradeoffs and
 high availability add further design considerations.
+
+### Example — a partition forces an operation-level choice
+
+Imagine two network partitions both trying to allocate the same final inventory
+unit. If they must always answer successfully without coordinating, they cannot
+also guarantee a single linearizable allocation in that failure scenario.
+Rejecting/waiting on one side preserves a stronger consistency contract at an
+availability cost.
+
+That is more precise than declaring an entire product "AP" or "CP." State which
+operation, which partition, which read/write rule and which recovery outcome.
+
+Timeouts bound waiting, breakers limit repeated failed calls, bulkheads isolate
+resource budgets, and backpressure limits admitted work. None decides the business
+fallback for you. Choose rejection, stale data or durable queuing only where its
+contract is acceptable and observable.
 
 ## Worked failure analysis
 

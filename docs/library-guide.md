@@ -51,6 +51,20 @@ demonstrate it. Use these sections when appropriate:
 Articles, references, and research notes can use their own headings. Do not add
 empty sections merely to follow the chapter pattern.
 
+### Explain a mechanism through an example
+
+Define the idea in plain language before naming its APIs. Give a small input,
+program, request, query or timeline, then show the expected result. Walk through
+why each relevant step produces that result, identify a backend consequence and
+explain a common mistake or limit. Let an example demonstrate the mechanism rather
+than merely decorate a definition.
+
+Keep code blocks formatted and complete for their stated scope. Distinguish
+standalone examples from snippets requiring a framework/service or surrounding
+context. Mark hypothetical timings and runtime-dependent observations explicitly;
+do not present illustrative capacity arithmetic as a measured benchmark. Practical
+project placeholders should remain labelled until implementation is requested.
+
 ## Runnable examples
 
 Keep executable code under `examples/<subject>/`, outside `docs/`. Each runnable

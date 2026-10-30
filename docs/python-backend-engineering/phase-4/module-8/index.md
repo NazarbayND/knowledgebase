@@ -40,6 +40,22 @@ flowchart TD
     Fake[In-memory test adapter] -. implements .-> Port
 ```
 
+### Example — the same id has different meanings at different boundaries
+
+An API input might contain product_id and quantity. The domain uses an authorized
+tenant, a Product identity and a reservation rule. Persistence adds columns such
+as lock/version state. A response exposes the new order id/status, not every
+persistence field.
+
+Mapping is worthwhile because these meanings differ. Blindly sharing one class
+can let a client supply server-owned fields or make domain logic depend on a live
+ORM session. Blindly creating many identical wrappers can add noise without an
+actual boundary.
+
+Ask which component owns validation, authorization, invariant enforcement,
+persistence and serialization. Draw dependencies toward stable use-case/domain
+interfaces. Folder names alone do not enforce that direction.
+
 ## Services, repositories and Unit of Work
 
 A service coordinates a business use case. A repository adapts persistence/query
@@ -69,6 +85,27 @@ Dependency inversion does not demand a DI container: constructor/function argume
 and FastAPI dependencies can compose a small application. Avoid a service locator
 whose global lookups hide every required dependency.
 
+### Example — why repositories must not commit independently
+
+```text
+reserve stock → repository A commits
+insert order  → repository B fails
+try rollback  → cannot undo A's already committed transaction
+```
+
+The business invariant spans both effects, so one use case must own the transaction.
+Repositories perform their operations within it; the Unit of Work commits only
+after all required effects succeed and rolls back failed/uncommitted work.
+
+An outbox record may belong inside that same boundary. A vendor call usually
+cannot join the database transaction, so holding locks during a slow HTTP request
+does not create atomicity with the vendor. Use a supported idempotency/workflow
+protocol for that separate boundary.
+
+A dependency-injection container is optional. Explicit constructor/function
+arguments can supply a repository and Unit of Work without hiding them behind
+global service-locator lookups.
+
 ## Sessions and transactions
 
 SQLAlchemy 2.x separates engines/pools from Session/AsyncSession units of interaction.
@@ -87,6 +124,22 @@ Materialize a response-safe projection while its owning context is valid. Measur
 queries and loading strategies rather than assuming an ORM expression executes
 one efficient statement.
 
+### Example — one session is not one safe shared query channel
+
+Suppose two asyncio tasks share an AsyncSession. Task A begins changing an order;
+task B performs an unrelated operation and commits. They now interact through
+the same mutable identity/transaction state. Awaiting both concurrently does not
+give each its own independent transaction.
+
+Use a session per appropriate unit of work and avoid sharing it across concurrent
+tasks. An engine/pool can be reused under its supported lifecycle; the session
+has a shorter, mutable scope. Returning an ORM object after closing that scope
+can cause later lazy/expired attribute access to require unavailable I/O.
+
+Project safe response data while the required context is valid, and measure the
+actual queries/loading strategy. AsyncSession does not turn every attribute read
+into an automatically awaited database operation.
+
 ## Configuration and secrets
 
 Read configuration at a clear composition boundary and validate required values
@@ -99,6 +152,22 @@ Production settings should not silently use development fallbacks. Keep test
 configuration isolated from live services and make dangerous destinations difficult
 to select accidentally. Connection limits/timeouts are part of configuration,
 not incidental library defaults.
+
+### Example — validate configuration at composition, not halfway through a request
+
+A missing database destination discovered on the first checkout request produces
+a user-visible failure long after deployment looked successful. Validate required
+settings when composing the application and give failures enough context without
+printing credential values.
+
+Distinguish absence from an intentional empty/zero setting. Separate test and live
+destinations so an integration fixture cannot silently fall back to production.
+A secret manager supplies values through a secure mechanism, but permissions,
+rotation/adoption and redaction remain application/platform responsibilities.
+
+Avoid module-level configuration loading that acquires real resources merely
+because a test imports a type. Startup configuration, installed dependencies and
+per-request data each have different owners and failure reporting needs.
 
 ## Test layers and isolation
 
@@ -118,6 +187,22 @@ Mock a nondeterministic boundary to inject a failure; do not mock every internal
 method and assert the existing call sequence. A test that passes when all business
 logic is replaced with a stub is not evidence of business correctness.
 
+### Example — ask what defect would make each test fail
+
+For a rejected reservation, a unit test can assert unchanged domain state. For
+PostgreSQL rollback, an integration test must cross the real transaction boundary.
+For a public error schema, a route contract test can submit an invalid request.
+For TLS/proxy behavior, an in-process route call is insufficient.
+
+If every repository call is mocked, a test may verify the existing call sequence
+while missing a real independent commit or wrong SQL predicate. Keep assertions
+about observable guarantees, then choose the lowest test layer able to expose
+the defect.
+
+Fixtures need isolated data and controlled lifetime. Sharing one mutable session
+between tests can hide missing setup or create order-dependent results. Parallel
+workers need an explicit data-isolation strategy too.
+
 ## Async tests and real infrastructure
 
 HTTPX ASGI transport can exercise application requests without a real TCP listener.
@@ -135,6 +220,21 @@ data. SQLite is useful for some local tests but is not equivalent to PostgreSQL
 locking, JSONB, indexes or isolation. Test actual PostgreSQL semantics where those
 semantics are the requirement. Here the project and its environment remain deferred.
 
+### Example — a passing ASGI request does not prove a deployment works
+
+HTTPX's ASGI transport can invoke an application without DNS, sockets, TLS or a
+reverse proxy. That is useful for fast route behavior checks. It cannot detect
+a wrong container bind address, an ingress path-prefix error or certificate failure.
+
+Startup/lifespan may also need explicit management in the chosen test tools.
+A route that only works because a fixture supplied a client is not evidence its
+real application startup creates/closes that client.
+
+Use real PostgreSQL for behavior depending on its locks/isolation/types. SQLite
+may cover some application paths, but passing it cannot establish PostgreSQL
+concurrency correctness. The practical service environment remains deferred;
+these are test-design examples, not executed infrastructure claims.
+
 ## Modular monoliths and refactoring
 
 A modular monolith can enforce capability boundaries without cross-service network
@@ -146,6 +246,22 @@ contracts, introduce a seam, move one responsibility, then rerun the checks rele
 to that boundary. A green unit suite with mocked SQL cannot establish a persistence
 refactor preserved real transaction behavior. Compare schemas/OpenAPI and important
 queries as well as function results.
+
+### Example — refactor one boundary while protecting the public contract
+
+Start with a large handler that parses input, selects SQL, changes state and
+constructs a response. First capture important success/error/authorization behavior.
+Then extract one application operation with explicit inputs/dependencies, retaining
+the same observable responses.
+
+Next separate persistence behind a meaningful interface and verify real transaction
+behavior where required. Compare OpenAPI/exposure and query behavior as well as
+returned values. A refactor can preserve a happy response while introducing N+1
+queries or closing a stream's session early.
+
+A modular monolith supports these steps without adding network calls or deploying
+new services. Choose extraction only when its independence or scaling benefit
+earns the data ownership, failure and operating cost.
 
 ## Worked failure analysis
 

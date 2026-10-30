@@ -48,6 +48,22 @@ This small illustration normalizes a limit; a real contract may reject out-of-ra
 values instead. Choose intentionally and describe it in OpenAPI. Dependencies are
 ordinary Python callables; the framework supplies their request-time orchestration.
 
+### Example — resolve the dependency graph once per request
+
+Imagine a route needs current_user, tenant_context and an OrderService. The service
+and tenant_context both depend on current_user. FastAPI normally reuses that
+dependency result within the same request graph instead of validating the same
+credential twice.
+
+Follow the sequence: parse credentials → validate identity → authorize tenant →
+construct request resources/service → call the route. A dependency can fail before
+the route body starts. That makes it an explicit boundary, not a hidden global.
+
+On the next request, resolution happens again under its own context. Dependency
+caching does not mean the principal becomes a process-wide singleton or that a
+database session can be shared across concurrent callers. The request cache and
+application-lifespan resource ownership serve different purposes.
+
 ## Validation and model boundaries
 
 Pydantic v2 models parse/validate external representations. Coercion can be useful
@@ -73,6 +89,35 @@ diverge. A database password/hash/internal flag must not become a public respons
 because it exists on an ORM object. Serialization configuration and explicit
 response schemas create a reviewable exposure boundary.
 
+### Example — a valid integer can still be an invalid order
+
+The following Pydantic v2 illustration requires that library when run; it is not
+a newly installed project:
+
+```python
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+class OrderInput(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    quantity: int = Field(gt=0)
+
+for value in (2, "2", True, 0):
+    try:
+        parsed = OrderInput(quantity=value)
+    except ValidationError:
+        print(repr(value), "rejected")
+    else:
+        print(repr(value), "accepted")
+```
+
+Expected decisions are: integer 2 accepted; string '2', True and zero rejected.
+Strictness prevents unintended coercion, and the positive constraint rejects zero.
+
+But quantity=2 says nothing about whether the product exists, whether the caller
+owns the tenant, or whether two units remain at commit. Those are authorization
+and state/domain decisions. Keeping those layers distinct makes failure responses
+and tests more precise.
+
 ## Responses and OpenAPI
 
 Response models specify the shape callers can rely on and can filter fields.
@@ -84,6 +129,22 @@ Generated OpenAPI is an artifact to review, not proof a contract is useful or
 backwards compatible. Check nullable vs optional fields, required inputs, enum
 values and examples. A response validation failure is usually a server-side
 contract defect; do not report it as if the caller submitted invalid input.
+
+### Example — choose the public representation deliberately
+
+Suppose a persistence object has id, name, internal_cost_minor and supplier_token.
+Returning every attribute because the object is convenient exposes more than the
+client contract. A response model or explicit projection should include only the
+approved public fields.
+
+Review the contract in two directions: can valid responses always satisfy it,
+and can internal fields escape? A server producing the wrong response shape has
+a server defect; reporting it as caller input validation misleads clients.
+
+OpenAPI captures the chosen schema/status/auth descriptions. Review changes such
+as a new required field or stricter validation against existing clients. Generated
+documentation is useful evidence of the declared API, not proof its business
+behavior or compatibility is correct.
 
 ## Middleware and error contracts
 
@@ -98,6 +159,25 @@ Preserve internal causes in diagnostic evidence without leaking SQL or traceback
 details. Define a consistent structure, for example code, safe message and request
 id. Never collapse every exception into HTTP 200 with `success=false`: caches,
 clients and monitoring need meaningful status behavior.
+
+### Example — translate expected errors without hiding defects
+
+```text
+Invalid request shape       → documented validation response
+Missing product             → documented absent-resource response
+Insufficient stock          → documented state-conflict response
+Unexpected coding exception → safe server-error response + internal evidence
+```
+
+Use one stable public error structure with a machine-readable code and correlation
+identifier. Preserve the original cause internally, without returning SQL, tokens
+or tracebacks. A caller can correct input or handle a stock conflict; it cannot
+repair your AttributeError.
+
+Middleware can add correlation/timing context, while domain exception handlers
+translate expected failures. Order matters: a layer outside an exception handler
+observes a different path from a layer inside it. Once a streaming response has
+sent headers, the normal replacement error response is no longer available.
 
 ## Lifespan and dependency scopes
 
@@ -117,6 +197,22 @@ Do not acquire resources at module import or let a dependency return a global
 mutable request session. Importing a module for tests should not connect to a live
 database or start a worker.
 
+### Example — the response may still use resources after the handler returns
+
+A route returns a stream whose next chunk reads from a database-backed iterator.
+If a dependency closes its session immediately after the route function returns,
+the stream can fail on its first later read. If the session remains open for a
+very slow download, it can occupy a pool slot for minutes.
+
+The solution begins with the ownership contract: materialize a bounded projection,
+use a stream-owned resource with limits, or provide an asynchronous export job.
+Choose supported dependency scopes against the eventual pinned FastAPI version;
+cleanup timing has changed across releases.
+
+A lifespan-owned engine/client and request-owned session solve different lifetime
+needs. Module import is neither: importing a helper during a test should not start
+production network resources.
+
 ## Execution, authentication and testing seams
 
 An async route/dependency should use async I/O. Framework-managed sync callables
@@ -133,6 +229,22 @@ Keep authorization negative cases: absent identity, wrong audience, expired toke
 valid identity without role, another tenant's object, and forbidden field changes.
 Successful authentication alone proves none of the latter.
 
+### Example — overriding a verifier tests a different boundary
+
+A route test replaces current_user with a known principal. That can test whether
+a tenant editor is denied an admin action, or whether a response projects safe
+fields. It cannot establish that an expired token or wrong-audience JWT is rejected,
+because the verifier never ran.
+
+Keep those tests separate: verifier integration checks the credential contract;
+route/use-case cases check action/object/field authorization using controlled
+principals. Include another tenant with the same role to expose horizontal access
+bugs that role-only tests miss.
+
+Similarly, a sync helper called from an async route remains blocking unless the
+chosen execution path offloads it. A dependency declaration is not a general
+scheduler for every function it indirectly calls.
+
 ## Large bodies and live connections
 
 File uploads need declared size limits at proxy/application boundaries, streaming
@@ -145,6 +257,21 @@ Bound outbound buffers and message sizes, decide how disconnects cancel producer
 and manage authentication expiry. Once headers are sent, errors need stream-level
 termination/resumption behavior rather than a replacement JSON response.
 
+### Example — size and slow-consumer limits belong to the contract
+
+An upload declares a small Content-Length but sends more bytes, or has no known
+length. Trusting only the header lets the application buffer an unbounded body.
+Enforce limits while receiving, and coordinate proxy/application behavior.
+
+For a download/WebSocket, reverse the direction: an application producing quickly
+for a slow client can accumulate unbounded output. Bound buffers, pause producers
+or disconnect under an explicit resume/retry policy. Define cleanup and identity
+expiry over the whole connection lifetime.
+
+Do not use a raw caller filename as a writable path. Decide safe naming, allowed
+content processing and temporary-file cleanup. These are resource/security rules,
+not merely another Pydantic field constraint.
+
 ## Contract evolution
 
 Adding a required field breaks old callers; changing validation/coercion can too.
@@ -152,6 +279,20 @@ An additive enum value may break exhaustive client matches. Separate internal
 refactors from public changes and review schema diffs plus representative client
 behavior. Keep old and new application versions compatible with shared database
 state during a rolling release.
+
+### Example — an additive field is not always a harmless release
+
+A new optional response field is usually easier to introduce than a new required
+request field, but a strict client may reject unknown data. A new enum value can
+break exhaustive branches even though the schema change looks additive.
+
+Record which consumers exist, review generated schema differences, and exercise
+representative old-client behavior. During rolling deployment, old/new binaries
+also share persistence and message contracts. A route-level refactor that preserves
+JSON output can still break lazy loading, session lifetime or authorization.
+
+Separate the desired public change from internal cleanup so reviewers can assess
+both. "OpenAPI builds" is not the same as "existing clients can still operate."
 
 ## Worked failure analysis
 

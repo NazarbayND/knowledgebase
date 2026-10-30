@@ -29,6 +29,22 @@ while writers create new versions. Old versions require cleanup once no relevant
 snapshot needs them. Long transactions can retain versions, interfere with vacuum
 and occupy connections even when application CPU is idle.
 
+### Example — a transaction groups effects, not arbitrary external reality
+
+An order use case updates stock, inserts an order and records an outbox event.
+If they share one database transaction, a pre-commit failure can roll them all
+back. If each repository commits independently, the later failure cannot undo
+earlier commits.
+
+MVCC lets a reader see tuple versions appropriate to its snapshot rather than
+always waiting for the newest writer. A long-lived snapshot can require old
+versions to remain, which affects cleanup and storage even while the application
+looks idle.
+
+ACID does not automatically encode "one doctor must remain on call" or "this user
+owns the tenant." State those invariants and choose constraints/transaction
+protocols that actually enforce them.
+
 ## Isolation and anomalies
 
 | PostgreSQL level | Snapshot behavior | Important implication |
@@ -45,6 +61,29 @@ value without a suitable condition/lock. Write skew occurs when transactions rea
 a shared invariant but update different rows, such as two on-call engineers each
 seeing the other available and both going off call. A per-row nonnegative stock
 check cannot express an arbitrary cross-row availability rule.
+
+### Example — stable reads can still permit write skew
+
+Two doctors are initially on call:
+
+| Step | Transaction A | Transaction B |
+| --- | --- | --- |
+| 1 | Sees B on call | Sees A on call |
+| 2 | Sets A off call | Sets B off call |
+| 3 | Commits | Commits |
+
+Each updates a different row, but the combined result violates "at least one
+doctor stays on call." Snapshot isolation can preserve each transaction's view
+without preventing this cross-row anomaly.
+
+At PostgreSQL Read Committed, successive statements can see different committed
+snapshots. Repeatable Read uses a stable transaction snapshot once established
+by the relevant query, while allowing the transaction's own changes; it prevents
+classic nonrepeatable/phantom reads but not every invariant failure. Serializable
+can reject unsafe histories, requiring complete transaction retries.
+
+Memorize the interleaving and invariant, not only the isolation-level names.
+Other databases can implement those labels differently.
 
 ## Concurrency-control strategies
 
@@ -78,6 +117,23 @@ Serializable can protect broader read/write invariants by rejecting unsafe
 interleavings. It still requires constraints, correct transaction scope and a retry
 policy. Choosing it is not permission to ignore external side effects.
 
+### Example — decide availability and decrement in one database operation
+
+Two callers both read stock=1, then each writes a result calculated from that
+old value. A separate read/check/write sequence needs a concurrency protocol.
+
+The guarded UPDATE already shown combines available >= quantity and subtraction.
+For competing updates, PostgreSQL's relevant row-lock/recheck behavior and the
+chosen isolation level determine how the contender proceeds. The application
+must inspect whether a row was returned and define absent/insufficient/conflict
+outcomes; it must not report success unconditionally.
+
+Put order creation in the same use-case transaction. A correct single-row decrement
+alone cannot ensure every decremented unit has a committed order. Compare row
+locking for explicit read/change logic with version preconditions when conflicts
+can be detected and surfaced. Neither strategy makes unrelated remote effects
+part of the database transaction.
+
 ## Deadlocks and retries
 
 Deadlock: transaction A holds product one and waits for two; B holds two and waits
@@ -94,6 +150,24 @@ effect may duplicate. Record durable intent/outbox within the transaction and
 process it with idempotent external contracts. A connection loss around commit can
 leave an unknown outcome; a durable request identity is needed to reconcile it.
 
+### Example — retry the unit whose assumptions became invalid
+
+```text
+A locks product 1        B locks product 2
+A waits for product 2   B waits for product 1
+Database detects cycle and aborts one transaction
+```
+
+A consistent product-lock order reduces this deadlock pattern. If a deadlock or
+serialization failure aborts the unit, roll it back and retry the complete
+transaction with fresh state and a bounded policy. Retrying only its final
+statement can retain assumptions from an invalid history.
+
+An email/payment already sent outside the database is not undone by rollback.
+Use durable intent plus a supported idempotency/reconciliation contract.
+A lost connection around commit can mean unknown success, not definitely failure;
+reconcile using a durable operation identity before causing another effect.
+
 ## Pools and transaction duration
 
 A pool bounds connections and reuses them; it does not increase database capacity.
@@ -104,6 +178,22 @@ Do not hold a transaction while waiting on a slow vendor or rendering a large
 stream if the invariant does not require it. Ensure rollback/close on cancellation
 and failed requests. Apply admission limits and realistic deadlines rather than
 making the pool arbitrarily large.
+
+### Example — low CPU can coexist with a full connection pool
+
+Suppose five long exports each hold a connection, and the pool cap is five.
+A tiny lookup request waits for checkout even though its SQL would take 2 ms.
+Increasing the pool may postpone the symptom while allowing more long transactions
+to consume database capacity.
+
+Measure acquisition wait separately from query time and inspect transaction age.
+Shorten resource lifetime, bound expensive operations and preserve cleanup under
+cancellation. Multiply pool settings by workers/replicas before comparing them
+with the database budget.
+
+Long snapshots can retain old row versions. A request that is waiting on a slow
+client while keeping a transaction open is consuming persistence resources even
+if its Python thread is not using CPU.
 
 ## Replication and partitioning
 
@@ -118,6 +208,20 @@ maintenance; it is not automatic cross-machine sharding. Choose keys from access
 and retention patterns. Too many partitions, skewed keys and incompatible unique
 constraints create new costs. Replication copies data; sharding distributes ownership.
 
+### Example — a successful write can be absent from an immediate replica read
+
+The primary commits order o-9 and returns success. The next GET is routed to an
+asynchronous replica that has not replayed that change yet, so it returns absent
+or stale data. The write did not disappear; the read used a lagging copy.
+
+Choose a policy: route consistency-sensitive reads to the primary, use a supported
+causal/position mechanism, or expose permitted staleness. Replication copies state;
+partitioning organizes ownership/pruning within a table; sharding distributes
+ownership across nodes. None automatically fixes a hot key or guarantees read-after-write.
+
+State failover acknowledgement and loss assumptions too. A replica useful for
+reads or failover is not a historical backup of a state before an accidental delete.
+
 ## WAL, backups and recovery
 
 WAL records changes needed for recovery. Backups plus continuous WAL archiving
@@ -130,6 +234,21 @@ High availability reduces outage probability/duration through redundancy/failove
 it does not prove correctness or replace a recovery drill. Prevent split-brain
 writers and understand which component owns promotion/routing.
 
+### Example — recovery objectives describe different promises
+
+An RPO of 15 minutes means the accepted recovery policy can lose up to that much
+data under its defined failure assumptions. An RTO of 60 minutes means the target
+is to restore useful service within that duration. A nightly backup alone cannot
+justify a 15-minute RPO without another recovery mechanism.
+
+WAL archiving plus a suitable base backup can support point-in-time recovery,
+but only if the chain is available and restoration works. Test permissions,
+retention, promotion/routing and preventing old writers from continuing.
+
+Record the recovered point and elapsed recovery evidence. A successful backup
+job is a prerequisite, not proof the application can resume correct service.
+The actual restore drill remains deferred with the practical project.
+
 ## Choosing other data models
 
 Document stores fit aggregate documents and flexible shapes; key-value systems fit
@@ -137,6 +256,22 @@ direct key access; wide-column systems fit partition-oriented high-volume access
 graphs fit relationship traversal. Evaluate query patterns, transaction boundaries,
 consistency, scale, operations and cost. “NoSQL” does not mean schema-free business
 data or no transactions, nor does a relational database fit every workload.
+
+### Example — choose storage from access patterns and invariants
+
+Orders with related items, constraints and transactions naturally motivate a
+relational baseline. Session lookups by opaque key can fit key-value storage.
+Documents with bounded nested shape may fit a document model; traversal-heavy
+relationships may motivate a graph. Wide-column designs emphasize partition-key
+access and distributed scale.
+
+Those names alone do not determine correctness. Ask which queries must be cheap,
+which writes must be atomic, what consistency is promised, how data evolves,
+and who operates/restores the system. "NoSQL" does not mean no schema or no
+transactions, and moving storage does not remove the application's invariant.
+
+Prefer one justified baseline over several databases chosen merely to demonstrate
+technology familiarity.
 
 ## Worked failure analysis
 

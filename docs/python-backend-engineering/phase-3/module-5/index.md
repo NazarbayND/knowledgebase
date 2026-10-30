@@ -36,6 +36,29 @@ Investigate DNS, TCP connect, TLS handshake and server response time separately.
 differs from a response read timeout, and a timeout does not prove a server did
 not perform an operation.
 
+### Example — separate establishing a connection from serving the request
+
+Imagine a cold request with these hypothetical nonoverlapping intervals:
+
+```text
+DNS lookup             15 ms
+TCP connection         20 ms
+TLS negotiation        30 ms
+HTTP/application work  80 ms
+Total                 145 ms
+```
+
+A later request reusing a valid connection might avoid the first three steps, but
+the application still needs its 80 ms. DNS caching alone does not reuse a TCP/TLS
+session. A pool can also have no free connection, introducing acquisition wait
+even when the remote server is fast.
+
+Follow the actual destination through proxies: the browser can negotiate TLS with
+an edge while that edge uses another connection/protocol to the application.
+A certificate check authenticates the configured server endpoint; it does not
+authorize the caller to access an order. This separation prevents "network time"
+from becoming an unexplained bucket for database or pool delays.
+
 ## Protocol versions and connection reuse
 
 | Protocol | Mechanism | Engineering consequence |
@@ -51,6 +74,22 @@ but needs idle timeouts, bounded pools and graceful connection draining.
 
 Do not implement HTTP framing with ad hoc socket string splitting. Use a mature
 client/server implementation and understand which hop owns TLS and protocol conversion.
+
+### Example — multiplexing shares a connection, not unlimited capacity
+
+Suppose a browser requests three resources. With HTTP/1.1, a client commonly uses
+several pooled connections to overlap requests. With HTTP/2, streams can share
+one connection without waiting for the previous response body to finish first.
+
+That does not mean three CPU-heavy handlers execute in parallel on one event-loop
+thread. It also does not remove TCP loss effects across that connection. HTTP/3
+changes the transport to QUIC and can avoid TCP's cross-stream delivery blocking,
+while application limits and downstream waits remain.
+
+When diagnosing a waterfall, identify which hop negotiated which protocol and
+whether waiting is at connection acquisition, transport delivery, application
+scheduling or the database. "We enabled HTTP/2" is not evidence that the slow
+part was on the HTTP/1.1 hop.
 
 ## Methods, representations and errors
 
@@ -80,6 +119,35 @@ Return a stable error structure with a machine-readable code, safe detail and
 request identifier. Avoid leaking stack traces, SQL or credentials. A response
 schema must describe failures as deliberately as success.
 
+### Example — status and representation tell the client what happened
+
+```http
+POST /v1/orders
+Content-Type: application/json
+Idempotency-Key: checkout-42
+
+{"product_id":"p-7","quantity":2}
+```
+
+An illustrative success is:
+
+```http
+HTTP/1.1 201 Created
+Location: /v1/orders/o-9
+Content-Type: application/json
+
+{"id":"o-9","status":"accepted"}
+```
+
+The method requests creation/processing, Content-Type defines the submitted data,
+201 says a resource was created, and Location identifies it. A background workflow
+may still be pending; created does not mean shipped.
+
+For insufficient stock, choose a documented conflict/domain error rather than
+returning the same success shape. Clients, monitoring and caches need meaningful
+statuses. Authentication failure, authorization denial and malformed input have
+different recovery actions; do not collapse them all into one generic 400.
+
 ## Idempotency and caching
 
 If the server commits an order and the response is lost, retrying POST can create
@@ -98,6 +166,27 @@ No-cache permits storage but requires validation before reuse; no-store prohibit
 storage by compliant caches. Vary identifies request headers affecting the selected
 representation. Personalized responses and authorization need explicit cache-key
 and shared-cache policies to avoid cross-user disclosure.
+
+### Example — a timeout can happen after a successful commit
+
+```text
+Client          API                Database
+POST key=42  →  insert order     →  commit o-9
+             × response connection lost
+POST key=42  →  recover saved outcome o-9
+```
+
+The retry should recover the same intended effect under the idempotency contract.
+The key must be scoped, tied to a request fingerprint and claimed/stored atomically
+with the relevant business outcome. A new payload under the same key should not
+silently reuse an unrelated order. A process-local dictionary cannot cover worker
+crashes or concurrent processes.
+
+Caching solves a different problem. GET with If-None-Match can receive 304 when
+the representation is unchanged. An update with If-Match can receive 412 when
+its observed version is stale. Cache validation and write preconditions use version
+knowledge, but neither replaces the transaction enforcing the change. No-cache
+allows storage with revalidation; no-store prohibits compliant storage.
 
 ## Resource contracts and pagination
 
@@ -124,6 +213,28 @@ tie-breaker such as id and a compatible index. An opaque cursor should bind its
 filters/order and validate its structure; signing is useful when integrity matters.
 Cursor paging does not itself guarantee a snapshot across many requests.
 
+### Example — pagination needs a tie-breaker and a consistency promise
+
+Suppose orders sort newest first:
+
+```text
+id    created_at
+o-9   12:00:00
+o-8   12:00:00
+o-7   11:59:00
+```
+
+A cursor containing only 12:00:00 cannot distinguish the first two positions.
+Ordering by created_at and id, and carrying both values in the continuation
+predicate, makes the next boundary deterministic. Bind the cursor to the tenant,
+filters and sort contract; an arbitrary caller-supplied cursor must not escape
+authorization.
+
+Offset paging can skip/repeat items if new rows shift earlier pages. Keyset paging
+reduces that shifting problem but does not automatically freeze the whole dataset.
+If clients require a stable export snapshot, design that separately. The first
+page and subsequent cursor pages must use the same ordering and access rules.
+
 ## Identity and browser boundaries
 
 A session cookie can identify server-side session state; a bearer token grants
@@ -139,6 +250,22 @@ for cookie-authenticated state changes. XSS executes script in the application's
 origin and can undermine other controls; HttpOnly reduces cookie script access,
 not all consequences of script execution.
 
+### Example — a permitted origin is not permission to read an object
+
+A browser at app.example sends a request for tenant B's order using user A's
+credentials. The server allows app.example through CORS. That only permits the
+browser to expose an allowed cross-origin response; it does not establish that
+user A belongs to tenant B.
+
+The backend must verify identity and authorize tenant/object access before
+returning data. A non-browser script is not constrained by browser CORS policy.
+For cookie-based state changes, automatically attached credentials create a
+separate CSRF concern. HttpOnly reduces cookie reading by scripts, but XSS can
+still initiate actions in the application's origin.
+
+Trace each control to its threat: CORS, CSRF, XSS, authentication and object
+authorization overlap operationally but do not substitute for one another.
+
 ## Long-lived communication
 
 | Pattern | Fit | Operational costs |
@@ -151,6 +278,21 @@ Streaming is not a reason to omit resource limits. Proxies may buffer, idle time
 may cut quiet connections and slow consumers can retain data indefinitely. Define
 resume/loss behavior: an SSE event id is not proof the application persisted every
 event or the consumer processed it.
+
+### Example — reconnecting is not the same as recovering delivery
+
+For an SSE order-status stream, the client might receive event 17 and disconnect
+before processing it. On reconnect it sends its last processed event identity.
+The server needs a retention/resume contract to decide which events to replay.
+
+If only an in-memory broadcast exists, reconnect may restore the socket while
+lost history remains lost. If processing can repeat, clients need idempotent
+application of updates. A WebSocket adds bidirectional messages, but not automatic
+durability, ordering across reconnects or unlimited buffers.
+
+Choose SSE for a one-way feed when it fits, and WebSocket when bidirectional
+interaction earns the extra connection/message lifecycle. Define idle heartbeats,
+authentication expiry, proxy buffering and slow-consumer limits in either case.
 
 ## Worked failure analysis
 

@@ -36,6 +36,22 @@ Namespace keys by environment, tenant, resource and representation version where
 required. `catalog:{tenant}:v2:{product}` communicates more than an ambiguous product
 id alone. Never let unrelated tenants share an authorization-sensitive cache key.
 
+### Example — a key must identify the representation, not just the object
+
+Suppose tenants A and B both have product 7. A cache key product:7 can return A's
+representation to B if the lookup path ignores tenant context. A safer key
+includes tenant, representation version and any other dimension that changes
+the permitted result.
+
+Choose structures from operations: a string for one serialized response, a hash
+for selected fields, a sorted set for ordered scores, or a Stream for retained
+entries. A hash with a million unbounded fields is still an unbounded data
+structure, and one hot key is still concentrated work.
+
+Caching removes repeated source work only if key cardinality, value size, TTL and
+eviction policy fit the workload. It is not just replacing a database call with
+a Redis command.
+
 ## Cache placement strategies
 
 | Strategy | Flow | Tradeoff |
@@ -47,6 +63,26 @@ id alone. Never let unrelated tenants share an authorization-sensitive cache key
 PostgreSQL remains FulfillHub's source of truth for orders/stock. A cached stock
 display can be stale; final reservation must use the authoritative transaction.
 Write-behind is a poor default for business data whose loss is unacceptable.
+
+### Example — cache-aside has two owners and a failure gap
+
+```text
+GET cache → miss
+READ database → product version 8
+SET cache → product version 8 with TTL
+RETURN product
+```
+
+The database owns truth; the cache owns a derived representation. On a write,
+decide when/how that representation is invalidated or replaced. Cache-aside is
+simple but has races with concurrent readers; write-through centralizes write
+paths but still has multi-system failure ordering.
+
+Write-behind acknowledges before source persistence under a buffering contract.
+If the buffer is not durably recoverable, acknowledged writes can disappear.
+That is a materially different promise from a derived catalogue cache. Do not
+choose write-behind for authoritative order/stock data just because its apparent
+latency is lower.
 
 ## Freshness and invalidation
 
@@ -64,6 +100,24 @@ Negative caching can store “absent” briefly to protect the source, but tenan
 context and creation behavior affect the key and TTL. Cache eviction is a capacity
 policy, not an invalidation guarantee.
 
+### Example — deleting after a write does not stop a stale refill
+
+```text
+Reader A: cache miss; reads old price 100 from database
+Writer B: commits price 90; deletes cached value
+Reader A: fills cache with its earlier price 100
+```
+
+The final cache is stale even though B invalidated after commit. A TTL can bound
+some residence, but does not prove immediate consistency. Version-aware writes,
+coordinated fills or an explicit bounded-staleness contract address different needs.
+
+For stock display, bounded staleness may be acceptable while checkout always
+uses authoritative transactional state. For permissions, a long stale allowance
+may violate the contract. Define freshness per use case, not one global cache
+duration. Negative caching similarly needs a short, scoped absence policy that
+does not mask newly created or differently authorized resources indefinitely.
+
 ## Stampedes, hot keys and penetration
 
 A stampede occurs when many misses refill together. Use single-flight/coalesced
@@ -75,6 +129,21 @@ read patterns can help under explicit freshness limits; adding unrelated shards
 does not distribute one key's load automatically. Cache penetration sends requests
 for non-existent/un-cacheable values to the source repeatedly; validate input and
 consider bounded negative caching or probabilistic filters with understood errors.
+
+### Example — a cache restart changes load, not only hit ratio
+
+Imagine 1,000 requests for the same missing expensive report. Without coalescing,
+all 1,000 can query the database before any one fills the cache. A single-flight
+mechanism lets one owned fill run while compatible callers await its result.
+
+Also bound fills across different keys; per-key coalescing alone cannot protect
+a source against 1,000 distinct misses. TTL jitter spreads some expiry traffic
+but does not fix a completely cold cache after restart.
+
+Hot keys concentrate demand on one owner, while penetration repeatedly requests
+non-existent values that never helpfully cache. Validate inputs and choose bounded
+negative caching or other filters under clear error/freshness rules. Measure source
+load and fill concurrency alongside hit ratio.
 
 ## Rate limits and atomic updates
 
@@ -99,6 +168,33 @@ atomic decision:
 This is an algorithm contract, not a new installed limiter. A connection pool cap
 or semaphore limits concurrent work; it does not impose requests per second.
 
+### Example — atomic count and expiry form one limiter rule
+
+With separate INCR and EXPIRE calls, a client can fail after incrementing but
+before setting expiry. The counter may then outlive the intended window. This
+illustrative Redis Lua script combines the state rule after validating its TTL:
+
+```lua
+local ttl = tonumber(ARGV[1])
+if not ttl or ttl < 1 or ttl > 60000 or ttl ~= math.floor(ttl) then
+    return redis.error_reply("TTL must be 1..60000 milliseconds")
+end
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+    redis.call("PEXPIRE", KEYS[1], ttl)
+end
+return count
+```
+
+The trusted caller selects a server-policy window key, then compares count with
+the allowed threshold. This shows a fixed-window primitive, not a complete deployed
+limiter. Validate before mutation because script errors do not provide arbitrary
+rollback semantics.
+
+Window boundaries can permit bursts; token buckets/sliding windows make different
+cost/smoothing choices. A local semaphore limits in-flight work, not requests
+per second or a global tenant quota.
+
 ## PubSub and Streams
 
 Redis Pub/Sub delivers to currently connected subscribers without a retained
@@ -109,6 +205,21 @@ explicit policies. Neither feature alone proves exactly-once business effects.
 
 Do not choose Pub/Sub for a durable order workflow merely because a demonstration
 message arrived. Inspect disconnect/restart behavior and retention capacity.
+
+### Example — reconnection means different things for PubSub and Streams
+
+A subscriber disconnects while order event 42 is published. With ordinary Pub/Sub,
+being connected again does not retrieve that missed history. Streams can retain
+entries and consumer-group pending state, allowing recovery under retention,
+acknowledgement and reclaim policies.
+
+But a retained entry can be delivered again after a consumer crashes. The business
+effect still needs idempotency and a durable progress boundary. Retention that
+expires before a slow consumer catches up can also remove its recovery source.
+
+Use Pub/Sub for loss-tolerant live signals such as ephemeral presence. Choose a
+retained work/event mechanism when business recovery requires history, and specify
+capacity/ownership rather than assuming the word "stream" guarantees it.
 
 ## Locks, leases and fencing
 
@@ -126,6 +237,20 @@ Prefer a database transaction/constraint when it naturally owns the invariant.
 Distributed lock algorithms have topology/failure assumptions; document them
 instead of presenting a SET-with-expiry call as universal correctness.
 
+### Example — the old lease holder can wake after its authority expired
+
+Worker A acquires a lease and pauses. Its lease expires; B acquires a new lease
+and writes a newer result. A resumes and writes its stale result afterward.
+
+Comparing a random owner token during unlock prevents A from deleting B's lease.
+It does not stop A's stale write to the protected resource. A fencing design needs
+a monotonic token and resource-side enforcement rejecting an older token.
+
+This distinction matters when the resource is a database, file or external service.
+If that resource cannot enforce the intended protocol, "we used a distributed
+lock" is not enough proof. Prefer a database transaction/constraint when it naturally
+owns the invariant, and document lease timing/topology assumptions.
+
 ## Outage behavior
 
 For a derived catalogue cache, degrading to the source can preserve correctness
@@ -136,6 +261,21 @@ a different fail-open/fail-closed decision than catalogue reads.
 Observe hit/miss/error rates, refill concurrency, evictions, latency and source
 load. A high hit ratio can hide one expensive miss path or a stale-data bug.
 Never make authoritative stock writes depend on a cached count being current.
+
+### Example — fail-open fallback can overload the source
+
+A catalogue cache outage triggers direct database reads. Correctness may be
+preserved, but the source previously handled only misses and now receives every
+request. Its pool saturates, timeouts provoke retries and a cache issue becomes
+a database incident.
+
+Use bounded fallback/admission, coalescing, suitable stale serving and an owned
+circuit-breaker recovery policy. A rate-limit/security service may require a
+different fail-open/fail-closed choice from catalogue data.
+
+Observe errors, latency, evictions, fill concurrency and database load. A high
+overall hit ratio can hide a single expensive miss path or an authorization key
+bug. Recovery is about preserving both business guarantees and finite capacity.
 
 ## Worked failure analysis
 

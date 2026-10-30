@@ -36,6 +36,22 @@ can conflict with simplicity if applied mechanically. A three-line pure helper
 does not need a factory hierarchy; a storage boundary with two real adapters and
 contract tests may earn one interface.
 
+### Example — matching method names do not prove substitution
+
+Suppose Store.save promises that a later get returns the saved value. A replacement
+adapter implements save with the same annotated parameters but quietly drops the
+write. Static type compatibility can pass while the behavioral contract fails.
+
+Single responsibility asks which decisions change together: reservation rules
+and JSON file formatting have different owners. Dependency inversion lets the
+rule depend on a useful storage contract rather than on JSON's mechanics.
+Interface segregation keeps unrelated clients from depending on operations they
+do not need.
+
+Apply the principles to observable problems, not class counts. Splitting a coherent
+two-method object into ten interfaces can increase coordination without improving
+substitution, ownership or change safety.
+
 ## Bounded contexts and domain language
 
 Domain-driven design starts with the business language. A “product” in catalogue
@@ -51,6 +67,22 @@ create coordinated release coupling; share stable technical concepts deliberatel
 Do not create one microservice per database table. First identify capability,
 invariant, ownership and change cadence. A modular monolith can express those
 contexts while preserving inexpensive calls and local transactions.
+
+### Example — the word product can describe several different facts
+
+Catalogue's product has a current description and images. Inventory's product
+identity has available/reserved units. A historical invoice line has the purchased
+name and price at that time. Changing today's catalogue description should not
+rewrite yesterday's invoice.
+
+These are related concepts with different meanings and owners. A bounded context
+makes that language explicit; it does not require one process per meaning.
+An adapter can translate a supplier's SKU vocabulary without forcing every local
+use case to speak the supplier's schema.
+
+Ask which fact is authoritative, which is a projection/snapshot and how changes
+propagate. A shared Product class can be convenient initially, but becomes costly
+if every team must coordinate unrelated semantic changes through it.
 
 ## Aggregates and consistency
 
@@ -70,6 +102,22 @@ a defined transaction/concurrency strategy. Updating a search projection can be
 eventually consistent if clients understand freshness. Never label every delayed
 update harmless simply because a broker is present.
 
+### Example — choose the boundary around the invariant
+
+For one reservation, available stock and the reservation record must agree.
+An aggregate/use-case boundary should make that rule enforceable through a
+defined transaction and concurrency strategy.
+
+Making the entire tenant one aggregate would also serialize unrelated product
+work. Making every field independent would push the invariant into accidental
+coordination across boundaries. Neither extreme follows merely from the size of
+a class.
+
+A search projection can lag under its freshness contract while stock allocation
+cannot oversell. Separate immediate invariants from delayed derived updates.
+Moving them into separate services does not remove the relationship: it changes
+the protocol and failure costs needed to preserve the business promise.
+
 ## Deployment boundaries
 
 | Form | Benefits | Costs and constraints |
@@ -86,6 +134,21 @@ Extract a service when measured scaling, isolation, ownership or release constra
 justify it. A strangler-style migration can route one capability through a new
 boundary incrementally, with data migration, consistency and rollback planned.
 Measure operational/organizational consequences, not only CPU utilization.
+
+### Example — separate processes can still form a distributed monolith
+
+Order and inventory APIs run in different containers, but both edit the same
+tables and every release requires simultaneous schema changes. Network calls
+now introduce timeouts while data/release ownership remains coupled.
+
+The split may have added operating cost without delivering independent deployment.
+A modular monolith can preserve explicit capability boundaries and local transactions
+until measured scaling, ownership or fault-isolation needs justify extraction.
+
+When extracting, define owned data, compatible APIs/messages, migration and recovery.
+A strangler-style route can move one capability incrementally; it does not excuse
+a vague dual-write period. Compare the simpler alternative against the specific
+benefit instead of assuming service count measures architectural maturity.
 
 ## Patterns as local tools
 
@@ -107,6 +170,33 @@ A callable is enough for this small Strategy illustration. A stateful interface
 may be warranted for richer policies; choose based on the need. Avoid “generic
 repository” APIs that expose every ORM operation while pretending to isolate storage.
 
+### Example — a function can be a sufficient Strategy
+
+```python
+def economy(weight):
+    return 500 + weight * 2
+
+def express(weight):
+    return 900 + weight * 4
+
+def shipping_total(weight, policy):
+    if weight <= 0:
+        raise ValueError("weight must be positive")
+    return policy(weight)
+
+print(shipping_total(10, economy))
+print(shipping_total(10, express))
+```
+
+Expected output is 520, then 940. The caller chooses a pricing policy without
+changing the coordinating function. A stateful policy interface may be justified
+later, but a factory hierarchy is not required for these two pure functions.
+
+Repository, Adapter and Unit of Work similarly express particular needs:
+persistence access, representation translation and transaction ownership.
+A pattern that simply exposes every low-level ORM method has not necessarily
+created useful isolation.
+
 ## CQRS and event sourcing
 
 CQRS separates command and query models/paths. It can be as small as distinct
@@ -123,6 +213,34 @@ very different read/write models. Avoid them when ordinary transactions and an
 audit trail solve the requirement with less operational and schema-evolution cost.
 Conceptual P2 familiarity includes explaining the failure/rebuild model without
 implementing a new event-sourcing framework.
+
+### Example — event history and an outbox serve different purposes
+
+```python
+def rebuild_stock(events):
+    stock = 0
+    for kind, quantity in events:
+        if quantity <= 0:
+            raise ValueError("invalid event quantity")
+        if kind == "stock_added":
+            stock += quantity
+        elif kind == "stock_reserved" and quantity <= stock:
+            stock -= quantity
+        else:
+            raise ValueError("invalid event sequence")
+    return stock
+
+print(rebuild_stock([("stock_added", 3), ("stock_reserved", 1)]))
+```
+
+The result is 2. This tiny reducer illustrates state reconstructed from a defined
+ordered event history, not a production event store. Event sourcing needs schema
+evolution, replay, ordering, snapshots and retention/privacy decisions.
+
+An outbox alongside current state stores publication intent; it does not make
+that history the authority for rebuilding the domain. CQRS separates command/query
+paths and need not imply event sourcing or separate databases. Choose the mechanism
+whose purpose matches the requirement.
 
 ## Decision records and design reviews
 
@@ -141,6 +259,21 @@ Revisit: measured independent scaling or ownership constraints justify extractio
 A review should challenge requirements, failure boundaries, data ownership,
 rollout/recovery, security, observability, cost and team capacity. Record dissent
 and uncertainty constructively. “It is industry standard” is not evidence.
+
+### Example — an ADR preserves the assumption that could change
+
+A useful decision might say: one team, moderate load and stock/order invariants
+in one database favor a modular monolith. Its costs include a shared release
+and scaling unit. A revisit trigger could be measured independent scaling needs
+or genuinely separate ownership.
+
+That is more useful than "microservices are modern" because a reviewer can test
+the assumption later. Record alternatives, consequences, migration/recovery and
+what evidence would change the decision.
+
+Design review should challenge correctness, security, capacity, compatibility,
+operations and team support. A diagram may look clean while its transaction
+boundary is undefined; an ADR should make that uncertainty visible.
 
 ## Worked failure analysis
 

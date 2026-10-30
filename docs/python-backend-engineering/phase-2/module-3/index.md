@@ -52,6 +52,37 @@ Java and Kotlin also use references, but Python's ordinary assignment does not
 declare a static variable type. Rebinding changes which object a name denotes.
 Avoid reasoning from a variable's address or assuming a C-like value copy.
 
+### Example — mutation changes an object; assignment changes a binding
+
+```python
+a = [1, 2]
+b = a
+c = [1, 2]
+print(a == c, a is c)
+b.append(3)
+print(a, c)
+a = [9]
+print(a, b)
+```
+
+Expected output:
+
+```text
+True False
+[1, 2, 3] [1, 2]
+[9] [1, 2, 3]
+```
+
+Initially a and b reference one list; c references a different list with equal
+contents. Appending through b changes the shared object. Assigning a new list to
+a changes only that name: b still references the original list. Assignment,
+argument passing and returning an object do not implicitly copy it.
+
+In a backend, returning a cached dictionary directly can expose shared state.
+A caller's modification can change what another request sees. Decide whether
+the result is shared and immutable, independently copied, or deliberately mutable.
+Returning a reference does not by itself transfer exclusive ownership.
+
 ## Interpreter and frames
 
 CPython parses source, builds an AST, compiles code objects and executes bytecode.
@@ -82,6 +113,34 @@ coroutines keep their local state alive. Tracebacks can also retain frames and
 large objects, so retaining every exception forever can retain more memory than
 the visible error message suggests.
 
+### Example — the code can be shared while captured values differ
+
+```python
+def multiplier(factor):
+    def apply(value):
+        return value * factor
+    return apply
+
+double = multiplier(2)
+triple = multiplier(3)
+print(double(4), triple(4))
+print(double.__code__ is triple.__code__)
+print(double.__code__.co_freevars)
+```
+
+Expected output is 8 12, then True, then ('factor',). Both functions use the same
+compiled instructions but retain different enclosing bindings. The code object
+describes work; the function also supplies globals, defaults and closure cells.
+An active call supplies a frame with its current arguments/local execution state.
+
+This is why a closure can retain data after its enclosing call returns, and why
+a saved traceback can retain a failed call's large local payload. Keeping every
+exception in an unbounded diagnostics list may retain much more than its message.
+
+When reading dis output, identify loading, operations and return. Opcodes and
+specialization change across releases; do not turn one instruction listing into
+an application compatibility requirement.
+
 ## Reference counting and collection
 
 Standard CPython uses reference counting plus a collector for reference cycles.
@@ -111,6 +170,35 @@ and native extensions can allocate outside Python's tracing. A cache retaining l
 objects is not a cyclic-GC defect. Prefer bounded caches, explicit close methods,
 context managers and cancellation-aware cleanup over calling `gc.collect()` on
 every request. Finalizers are unsuitable for deterministic release.
+
+### Example — the collector cannot free data you still own
+
+```python
+import gc
+
+cycle = []
+cycle.append(cycle)
+cache = {"latest": bytearray(1024)}
+del cycle
+gc.collect()
+print(len(cache["latest"]))
+cache.clear()
+print(len(cache))
+```
+
+Expected output is 1024, then 0. The return value of gc.collect() is deliberately
+not asserted. The list cycle has no application owner after del, so cyclic
+collection can reclaim it. The bytearray is still reachable through cache and
+must remain alive. Clearing cache removes that ownership.
+
+Reclaiming an object is also different from returning memory to the OS. Allocators
+can retain regions for reuse, and native libraries can allocate outside Python's
+tracing. Rising RSS alone therefore cannot identify a Python reference leak.
+
+Compare repeated equivalent batches: does retained traced memory grow, or does it
+plateau while RSS remains high? Inspect caches, unfinished tasks and tracebacks
+before changing GC thresholds. Files, sockets and transactions still need explicit
+lifetime management; the collector does not know their business cleanup policy.
 
 ## Descriptors and method resolution
 
@@ -156,6 +244,35 @@ signatures, consume their own arguments and call `super()` once. Mixing direct
 base calls with cooperative calls can duplicate work. Multiple inheritance needs
 consistent protocols; composition is often easier to maintain.
 
+### Example — where self comes from
+
+```python
+class Greeter:
+    def greet(self, name):
+        return f"Hello, {name}"
+
+user = Greeter()
+bound = user.greet
+print(bound.__self__ is user)
+print(bound("Ada"))
+print(Greeter.greet(user, "Ada"))
+```
+
+Expected output is True followed by Hello, Ada twice. Accessing user.greet invokes
+the class function's descriptor and creates a bound method carrying user.
+Accessing Greeter.greet does not bind an instance, so the last call supplies it
+explicitly. self is a convention, not a keyword inserted into every function.
+
+Properties use related attribute machinery for reads/writes. A data descriptor
+takes precedence over an instance dictionary entry; a plain function is a
+non-data descriptor. Private backing storage can still be edited deliberately,
+so validation descriptors are not security barriers.
+
+For inheritance, inspect the actual instance's MRO. In Leaf(Left, Right), super()
+inside Left can reach Right before Root. It means continue after Left in this
+resolution order. Cooperative calls need compatible signatures and a consistent
+forwarding convention; mixing direct base calls can skip or duplicate behavior.
+
 ## Decorators and class creation
 
 Decorators run when the decorated definition executes. A wrapper can preserve a
@@ -193,6 +310,44 @@ A custom metaclass can enforce class-wide invariants but creates inheritance and
 metaclass-conflict costs. At P2 depth, explain this lifecycle and why an ordinary
 function or explicit registry is often preferable; writing a framework is optional.
 
+### Example — an async wrapper must await actual execution
+
+```python
+import asyncio
+from functools import wraps
+
+def trace_async(function):
+    @wraps(function)
+    async def wrapper(*args, **kwargs):
+        print("enter")
+        try:
+            return await function(*args, **kwargs)
+        finally:
+            print("exit")
+    return wrapper
+
+@trace_async
+async def calculate():
+    await asyncio.sleep(0)
+    return 6
+
+async def main():
+    print(await calculate())
+
+asyncio.run(main())
+```
+
+Expected output is enter, exit, then 6. Cleanup runs before the value reaches
+print. If calculate raises, finally still executes and the error propagates.
+A synchronous wrapper returning function(...) would only obtain a coroutine
+object; timing that call does not time its later execution.
+
+Class creation is another distinct moment: Python executes a class body to build
+a namespace, then the metaclass constructs the class object. Calling the finished
+class later constructs an instance. A class decorator or __init_subclass__ often
+satisfies registration needs with fewer inheritance constraints than a custom
+metaclass. Choose the smallest hook that explains the required behavior.
+
 ## Structural typing and variance
 
 Structural typing asks whether the operations match; nominal typing asks whether
@@ -227,6 +382,42 @@ covariant in its return. With legacy `TypeVar`, declare variance on generic clas
 where appropriate; modern type-parameter syntax can infer it. Keep interfaces
 small and let the checker verify substitutions instead of bypassing them with `Any`.
 
+### Example — compatible behavior without shared inheritance
+
+```python
+from typing import Protocol
+
+class Notifier(Protocol):
+    def send(self, message: str) -> str: ...
+
+class Email:
+    def send(self, message: str) -> str:
+        return f"email:{message}"
+
+class SMS:
+    def send(self, message: str) -> str:
+        return f"sms:{message}"
+
+def notify(provider: Notifier) -> str:
+    return provider.send("ready")
+
+print(notify(Email()))
+print(notify(SMS()))
+```
+
+Expected output is email:ready and sms:ready. Neither implementation inherits
+Notifier. A checker verifies compatible operations, not whether a provider really
+delivered a message; delivery needs a behavioral/integration contract.
+
+Generics preserve type relationships: taking Sequence[T] and returning T retains
+the element type. Any discards checking instead of expressing that relationship.
+
+Imagine treating list[Dog] as list[Animal]. A caller could append a Cat through
+the Animal alias, violating the Dog list's original promise. A read-only Sequence
+does not expose that append, so reading Dogs as Animals is safe. A handler accepting
+every Animal can also handle a Dog-specific task, while a Dog-only handler cannot
+handle arbitrary Animals. Trace the unsafe operation to understand variance.
+
 ## Functional techniques
 
 Comprehensions, generators, `map`, `filter`, `partial`, pure functions and immutable
@@ -252,6 +443,32 @@ retain upstream resources. Memoization is safe only for suitable inputs and
 bounded lifetimes; caching an authorization result indefinitely is not a free
 optimization. Python does not eliminate recursive tail calls, so do not convert a
 large loop to deep recursion for style alone.
+
+### Example — pure rules versus repeatable effects
+
+```python
+def remaining(stock: int, quantity: int) -> int:
+    if quantity <= 0 or quantity > stock:
+        raise ValueError("invalid reservation")
+    return stock - quantity
+
+print(remaining(5, 2))
+print(remaining(5, 2))
+```
+
+Both calls print 3. Inputs determine the answer without modifying external state.
+That makes the rule easy to test, but it does not reserve anything in a real
+database. Persistence still needs a transaction.
+
+Contrast a helper that increments a global counter: retries repeat its effect,
+and tests can depend on execution order. A useful design keeps calculations
+relatively pure and gives side effects an explicit application boundary.
+
+Comprehensions, partial and generators help when they clarify the transformation.
+Laziness avoids intermediates only if consumers stay incremental. lru_cache retains
+arguments/results; a maximum entry count is not a byte limit, and mutable cached
+results can be shared between callers. Choose ownership and freshness before
+memoizing data derived from permissions or changing remote state.
 
 ## Serialization boundaries
 
@@ -281,6 +498,37 @@ The JSON adapter writes a replacement snapshot before switching in-memory state.
 It deliberately does not claim concurrent transactions, durable fsync semantics,
 or multi-process coordination. Explain that boundary rather than calling it a database.
 
+### Example — serialization preserves a representation, not every Python type
+
+```python
+import json
+
+original = {"coordinates": (10, 20)}
+payload = json.dumps(original)
+restored = json.loads(payload)
+print(payload)
+print(type(restored["coordinates"]).__name__)
+print(restored == original)
+```
+
+Expected output:
+
+```text
+{"coordinates": [10, 20]}
+list
+False
+```
+
+JSON has arrays, not tuples. Datetimes, Decimal values and bytes also need explicit
+encoding contracts. Decoding an apparently correct dictionary does not validate
+field types, tenant ownership or domain rules.
+
+Pickle can invoke behavior while reconstructing objects, so untrusted bytes must
+not be loaded with it. A queue or Redis key does not automatically make data trusted.
+Protocol Buffers, Avro and MessagePack make different schema/evolution/compactness
+choices. Representation is distinct from HTTP, gRPC or broker transport behavior.
+Choose compatibility and trust contracts first, then measure encoding cost.
+
 ## Profiling and complexity
 
 Measure the workload before optimizing. Complexity predicts scaling; profiling
@@ -303,6 +551,27 @@ An O(n²) repeated scan often dominates a micro-optimization to a method call. A
 generator may reduce peak memory but add iterator overhead. Record sample size,
 runtime, machine context, wall/CPU measurement, and variance. Do not assert fixed
 speed ratios in unit tests or report a single noisy timing as a general result.
+
+### Example — optimize the dominant part of the request
+
+Suppose an illustrative 900 ms request spends 800 ms on a database path, 80 ms
+waiting for HTTP, 15 ms serializing and 5 ms calculating. Eliminating the Python
+calculation cannot remove the other 895 ms. These are hypothetical nonoverlapping
+intervals, not benchmark results.
+
+First trace queue/pool wait separately from remote execution. Profile CPU when
+computation is plausible, compare tracemalloc snapshots for retained allocations,
+then benchmark an equivalent candidate repeatedly. Recheck correctness before
+claiming an improvement.
+
+Repeated list membership can require O(n²) work for n queries over n values.
+Building a set costs average O(n) and extra memory but can make those queries
+average O(n) overall. For one tiny query, construction can cost more than it saves.
+
+The existing performance_lab includes construction and checks equivalent counts.
+Its timings and allocation peaks vary: they are neither promised speed ratios
+nor total process memory. Record input, repetitions, instrumentation and excluded
+setup before using a measurement to justify architecture.
 
 ## Engineering decisions and common mistakes
 
