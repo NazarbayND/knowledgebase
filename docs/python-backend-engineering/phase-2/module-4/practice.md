@@ -47,7 +47,9 @@ The tests cover a bounded worker set, input-order results, endpoint timeouts,
 transport and HTTP errors, parent cancellation, unexpected child failure, invalid
 limits, empty input, and a real loopback HTTP boundary. Timing comparisons are lab
 observations, not speed assertions. Gather semantics and the lost-update repair
-are exercises to implement, not features claimed by the reference suite.
+now have reference implementations in `fulfillhub.async_patterns` and behavioral
+tests in `tests/test_async_patterns.py`. Attempt them independently before opening
+the [lifecycle walkthrough](concurrency-patterns.md).
 
 ## Interview practice
 

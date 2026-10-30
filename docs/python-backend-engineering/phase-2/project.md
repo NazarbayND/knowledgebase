@@ -37,6 +37,9 @@ Working directory: `examples/python-backend-engineering/`.
 ```bash
 uv sync --frozen
 uv run --frozen python -m fulfillhub.runtime_lab
+uv run --frozen python -m fulfillhub.object_model
+uv run --frozen python -m fulfillhub.performance_lab
+uv run --frozen python -m fulfillhub.async_patterns
 uv run --frozen python -m fulfillhub.concurrency_lab
 uv run --frozen python -m fulfillhub.concurrency_lab --executors
 uv run --frozen pytest
@@ -66,8 +69,10 @@ results and reports timing without assuming a process-speed advantage.
 | Read/await/write shared counter | Reproduce race, repair with appropriate ownership/lock, explain cross-process limit |
 
 The suite implements the aggregator contract and local HTTP integration checks.
-The membership benchmark and race repair are explicit learner extensions. Do not
-claim them complete just because the reference suite passes.
+The membership benchmark and race repair now have reference labs and tests, with
+explanations in the [runtime](module-3/runtime-investigations.md) and
+[concurrency](module-4/concurrency-patterns.md) walkthroughs. Reproduce their
+reasoning independently; passing the reference suite alone is not learner mastery.
 
 ## Capacity and deadline review
 

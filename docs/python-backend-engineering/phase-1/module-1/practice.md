@@ -143,7 +143,9 @@ uv run --frozen pytest tests/test_semantics.py -v
 
 Keep your attempts in the subject's examples tree. Do not add a new third-party
 library when a standard-library exercise is intended. The reference inventory
-package demonstrates core invariants; the CSV/report extensions are learner work.
+package demonstrates core invariants. The [worked examples](worked-examples.md)
+now include a complete CSV/report solution with resource-lifetime tests. Attempt
+the exercise first, then compare its explicit input and ownership contracts.
 
 ## Interview practice
 

@@ -46,20 +46,28 @@ nav:
           - python-backend-engineering/phase-1/index.md
           - Module 1 — Language semantics:
               - python-backend-engineering/phase-1/module-1/index.md
+              - Ownership & streaming walkthrough: python-backend-engineering/phase-1/module-1/worked-examples.md
               - Practice & assessment: python-backend-engineering/phase-1/module-1/practice.md
           - Module 2 — Professional development:
               - python-backend-engineering/phase-1/module-2/index.md
+              - Typed design & testing walkthrough: python-backend-engineering/phase-1/module-2/design-and-testing.md
               - Practice & assessment: python-backend-engineering/phase-1/module-2/practice.md
           - Inventory project: python-backend-engineering/phase-1/project.md
+          - Quick reference: python-backend-engineering/phase-1/quick-reference.md
+          - Cumulative assessment: python-backend-engineering/phase-1/assessment.md
       - Phase 2 — Internals & concurrency:
           - python-backend-engineering/phase-2/index.md
           - Module 3 — Data model & runtime:
               - python-backend-engineering/phase-2/module-3/index.md
+              - Runtime investigations: python-backend-engineering/phase-2/module-3/runtime-investigations.md
               - Practice & assessment: python-backend-engineering/phase-2/module-3/practice.md
           - Module 4 — Concurrency:
               - python-backend-engineering/phase-2/module-4/index.md
+              - Failure & backpressure walkthrough: python-backend-engineering/phase-2/module-4/concurrency-patterns.md
               - Practice & assessment: python-backend-engineering/phase-2/module-4/practice.md
           - Concurrency project: python-backend-engineering/phase-2/project.md
+          - Debugging playbook: python-backend-engineering/phase-2/debugging-playbook.md
+          - Cumulative assessment: python-backend-engineering/phase-2/assessment.md
       - Progress & checkpoints: python-backend-engineering/progress.md
       - Complete course plan: python-backend-engineering/course-plan.md
 

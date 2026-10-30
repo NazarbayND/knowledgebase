@@ -9,6 +9,9 @@ the API happens to have an `async` keyword.
 
 ## Chapter navigation
 
+Continue with the [failure and backpressure walkthrough](concurrency-patterns.md)
+for deterministic experiments, lifecycle traces and capacity/deadline reasoning.
+
 1. [Processes, threads and coroutines](#processes-threads-and-coroutines)
 2. [The GIL and free-threading](#the-gil-and-free-threading)
 3. [Workload selection](#workload-selection)

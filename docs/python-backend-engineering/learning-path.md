@@ -27,6 +27,15 @@ distributed-system and production phases visible without creating those lessons 
 
 ## Study cycle
 
+For a deeper pass, follow each module's worked page after its core chapters:
+[semantics and streaming](phase-1/module-1/worked-examples.md),
+[typed design and testing](phase-1/module-2/design-and-testing.md),
+[runtime investigations](phase-2/module-3/runtime-investigations.md), and
+[concurrency failure patterns](phase-2/module-4/concurrency-patterns.md).
+Then take the [Phase 1](phase-1/assessment.md) and [Phase 2](phase-2/assessment.md)
+cumulative assessments. Use the [Phase 1 reference](phase-1/quick-reference.md) and
+[Phase 2 playbook](phase-2/debugging-playbook.md) for focused revision.
+
 1. **Set a goal.** Pick one observable behavior you want to understand or implement.
 2. **Read and explain.** Read the relevant chapter and explain the model without
    copying its wording. Record unanswered questions.

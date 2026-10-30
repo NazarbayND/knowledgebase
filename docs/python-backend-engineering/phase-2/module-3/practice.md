@@ -29,8 +29,11 @@ uv run --frozen pytest tests/test_inventory.py
 
 Save a short report containing interpreter/build, workload, command, equivalent
 output, profiler evidence, allocation interpretation, and next experiment. The
-reference lab measures generator aggregation; add your membership comparison as
-learner work. Do not invent before/after numbers or remove checks to improve timings.
+original runtime lab measures generator aggregation. `fulfillhub.performance_lab`
+now supplies the membership comparison, including index construction and separate
+allocation measurements. Attempt your experiment first, then compare the
+[worked investigation](runtime-investigations.md#investigation-6-measure-an-algorithmic-change-fairly).
+Do not invent before/after numbers or remove checks to improve timings.
 
 ## MRO reasoning challenge
 

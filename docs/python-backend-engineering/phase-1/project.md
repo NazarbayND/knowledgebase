@@ -80,6 +80,11 @@ persistent data.
 
 ## Design review
 
+The [CSV reporting walkthrough](module-1/worked-examples.md#worked-lab-a-validated-inventory-csv-report)
+adds a streaming, read-only report alongside this project. It deliberately does
+not mutate repository stock. The [typed design review](module-2/design-and-testing.md)
+explains the package's boundary and failure-test choices in detail.
+
 Explain shallow vs deep immutability, why a Protocol helps adapters, what atomic
 replacement does and does not guarantee, and why concurrent overselling is not
 solved by these single-process operations. Database transactions and authenticated

@@ -9,6 +9,9 @@ annotation nor an interface description validates runtime input by itself.
 
 ## Chapter navigation
 
+For detailed applications and solutions, continue with the
+[ownership and streaming walkthrough](worked-examples.md) after these chapters.
+
 1. [Execution and truthiness](#execution-and-truthiness)
 2. [Identity and copying](#identity-and-copying)
 3. [Built-in values and collections](#built-in-values-and-collections)

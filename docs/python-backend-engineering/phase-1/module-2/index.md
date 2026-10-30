@@ -8,6 +8,9 @@ and whose implementation can change without invalidating callers.
 
 ## Chapter navigation
 
+Follow the [typed design and testing walkthrough](design-and-testing.md) to apply
+these tools to the inventory project and review concrete failure cases.
+
 1. [Objects and composition](#objects-and-composition)
 2. [Data classes and domain values](#data-classes-and-domain-values)
 3. [Typing interfaces](#typing-interfaces)

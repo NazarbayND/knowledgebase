@@ -11,6 +11,18 @@ tested package that starts FulfillHub's domain without a web framework.
 | [1 — Python language semantics](module-1/index.md) | Execution, references, collections, functions, scope, iteration, exceptions, resources, standard library | [Twelve predictions and implementation exercises](module-1/practice.md) |
 | [2 — Professional Python development](module-2/index.md) | OOP, data models, typing, checking, packages, tooling, testing | [Typed package and refactoring assessment](module-2/practice.md) |
 
+## Worked study route
+
+After each module's core chapters, work through its detailed application before
+taking the module assessment:
+
+1. [Ownership, functions, and streaming data](module-1/worked-examples.md): trace
+   aliases, fix callbacks, and build a validated CSV report with reliable cleanup.
+2. [From a script to a tested package](module-2/design-and-testing.md): follow
+   invariants through domain design, Protocols, failure injection, and packaging.
+3. Use the [quick reference](quick-reference.md) for revision, then attempt the
+   [cumulative assessment](assessment.md) without its model answers.
+
 ## Practical project
 
 Build the [inventory manager](project.md) with dataclasses, typed service methods,

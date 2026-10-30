@@ -34,6 +34,10 @@ Use the [professional development chapters](index.md) and the
 
 ## Refactoring challenge
 
+Use the [step-by-step design walkthrough](design-and-testing.md) to review your
+solution after attempting the challenge. It includes a test matrix and a worked
+boundary review explaining what static checks and mocks cannot establish.
+
 Begin with this intentionally poor design in a scratch file:
 
 ```python

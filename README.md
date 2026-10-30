@@ -61,6 +61,9 @@ The implemented examples have a separate [setup and command guide](examples/pyth
 Use Python 3.14 for them; changing their dependencies does not alter the site's
 Python 3.12 build environment. The examples include memory/JSON inventory adapters,
 runtime inspection/profiling, a bounded HTTP client and a temporary local HTTP lab.
+The enriched study route also includes four worked walkthroughs, a streaming CSV
+reporter, descriptor/decorator investigations, a membership benchmark, deterministic
+race/failure labs, and cumulative assessments with model answers for both phases.
 
 ## Add or extend a subject
 

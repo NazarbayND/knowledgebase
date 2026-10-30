@@ -76,6 +76,10 @@ jobs:
       - name: Run example entry points
         run: |
           uv run --frozen python -m fulfillhub
+          uv run --frozen python -m fulfillhub.reporting data/inventory.csv
+          uv run --frozen python -m fulfillhub.object_model
+          uv run --frozen python -m fulfillhub.performance_lab
+          uv run --frozen python -m fulfillhub.async_patterns
           uv run --frozen python -m fulfillhub.runtime_lab
           uv run --frozen python -m fulfillhub.concurrency_lab
           uv run --frozen python -m fulfillhub.concurrency_lab --executors

@@ -9,6 +9,9 @@ of a specific build before using internals to explain production behavior.
 
 ## Chapter navigation
 
+Use the [runtime investigations](runtime-investigations.md) for worked descriptor,
+MRO, decorator, ownership and profiling experiments after this overview.
+
 1. [Objects and ownership](#objects-and-ownership)
 2. [Interpreter and frames](#interpreter-and-frames)
 3. [Reference counting and collection](#reference-counting-and-collection)

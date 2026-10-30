@@ -23,6 +23,10 @@ regenerate it merely to install. To update dependencies deliberately, run
 
 ```bash
 uv run --frozen python -m fulfillhub
+uv run --frozen python -m fulfillhub.reporting data/inventory.csv
+uv run --frozen python -m fulfillhub.object_model
+uv run --frozen python -m fulfillhub.performance_lab
+uv run --frozen python -m fulfillhub.async_patterns
 uv run --frozen python -m fulfillhub.runtime_lab
 uv run --frozen python -m fulfillhub.concurrency_lab
 uv run --frozen python -m fulfillhub.concurrency_lab --executors
@@ -44,6 +48,20 @@ It shuts its server down before exiting. Timing is observational; tests assert
 behavior and concurrency bounds instead of speed ratios. The executor variant
 checks equal CPU results from thread/process pools; process startup can dominate
 this small workload. No database, external API, credentials, or Docker is needed.
+
+## Worked labs
+
+| Module | Lab | Expected behavior |
+| --- | --- | --- |
+| 1 | `reporting data/inventory.csv` | Three rows, twelve units, tenant totals five/seven; generated timestamp varies |
+| 3 | `object_model` | Descriptor value three; MRO trace Left/Right/Root; decorator returns six with entry/exit events |
+| 3 | `performance_lab` | Equivalent scan/index membership counts for three bounded sizes; timings/allocations are observations |
+| 4 | `async_patterns` | Unsafe count one and locked count twenty; gather sibling completes, TaskGroup sibling cancels before parent handling |
+
+Use `python -m fulfillhub.<lab>` via the commands above. Reporting streams CSV
+inside a context-manager lifetime, so malformed rows and early consumer exit do
+not leak the file. The input fixture is committed read-only sample data. Lab
+extensions, solutions and cumulative reviews are linked from the phase navigation.
 
 ## Boundaries
 

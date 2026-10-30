@@ -18,6 +18,14 @@ mastery. Update this table only after attempting the work and recording evidence
 
 ## Phase gates
 
+| Review | Status | Score | Evidence / date |
+| --- | --- | --- | --- |
+| [Phase 1 cumulative assessment](phase-1/assessment.md) | Not started | — | — |
+| [Phase 2 cumulative assessment](phase-2/assessment.md) | Not started | — | — |
+
+Worked solutions and supplied lab tests are study aids. Record separately what
+you reproduced, changed, and explained without consulting the reference.
+
 - [ ] **Phase 1:** explain all twelve predictions and deliver the
   [inventory package](phase-1/project.md), including failure-state invariants.
 - [ ] **Phase 2:** deliver [runtime and concurrency evidence](phase-2/project.md),
